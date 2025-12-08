@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Upload, FileText, AlertCircle } from 'lucide-react';
+import { Upload, FileText, AlertCircle, Film } from 'lucide-react';
 import { Movie } from '../types';
 import { INITIAL_ELO } from '../constants';
 import Button from './Button';
@@ -13,6 +13,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // ... (CSV Parsing Logic remains identical, omitted for brevity but assumed included in full file content) ...
   const parseCSV = (text: string): Movie[] => {
     const movies: Movie[] = [];
     const rows: string[][] = [];
@@ -20,33 +21,25 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
     let currentField = '';
     let inQuote = false;
 
-    // Robust CSV parsing state machine
-    // Handles newlines inside quotes and escaped quotes correctly
     for (let i = 0; i < text.length; i++) {
       const char = text[i];
       const nextChar = text[i + 1];
 
       if (char === '"') {
         if (inQuote && nextChar === '"') {
-          // Escaped quote: "" -> "
           currentField += '"';
-          i++; // Skip next quote
+          i++; 
         } else {
-          // Toggle quote state
           inQuote = !inQuote;
         }
       } else if (char === ',' && !inQuote) {
-        // End of field
         currentRow.push(currentField);
         currentField = '';
       } else if ((char === '\n' || char === '\r') && !inQuote) {
-        // End of row
         currentRow.push(currentField);
         rows.push(currentRow);
         currentRow = [];
         currentField = '';
-        
-        // Handle CRLF
         if (char === '\r' && nextChar === '\n') {
           i++;
         }
@@ -55,7 +48,6 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
       }
     }
     
-    // Handle last row if file doesn't end with newline
     if (currentField || currentRow.length > 0) {
       currentRow.push(currentField);
       rows.push(currentRow);
@@ -63,9 +55,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
 
     if (rows.length < 2) throw new Error("File appears empty or invalid.");
 
-    // Filter out empty rows that might occur at end of file
     const cleanRows = rows.filter(r => r.length > 0 && (r.length > 1 || r[0] !== ''));
-    
     if (cleanRows.length < 2) throw new Error("File appears empty or invalid.");
 
     const headerLine = cleanRows[0];
@@ -77,13 +67,11 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
     const uriIndex = headers.indexOf('letterboxd uri');
 
     if (nameIndex === -1 || yearIndex === -1) {
-      throw new Error("Missing required columns: 'Name' and 'Year'. Please use the 'watched.csv' or 'diary.csv' from Letterboxd.");
+      throw new Error("Missing required columns: 'Name' and 'Year'.");
     }
 
-    // Process rows
     for (let i = 1; i < cleanRows.length; i++) {
       const columns = cleanRows[i];
-      // Skip rows that don't have enough columns for name/year
       if (columns.length <= Math.max(nameIndex, yearIndex)) continue;
 
       const name = columns[nameIndex]?.trim();
@@ -103,14 +91,12 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
         });
       }
     }
-
     return movies;
   };
 
   const handleFile = async (file: File) => {
     setLoading(true);
     setError(null);
-    
     try {
       const text = await file.text();
       const parsedMovies = parseCSV(text);
@@ -146,10 +132,18 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
   }, []);
 
   return (
-    <div className="max-w-xl mx-auto mt-10 p-6">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-serif font-bold text-white mb-2">Import Data</h2>
-        <p className="text-lb-text">Upload your <code className="bg-lb-gray px-1 rounded text-lb-green">watched.csv</code> or <code className="bg-lb-gray px-1 rounded text-lb-green">diary.csv</code> from Letterboxd.</p>
+    <div className="max-w-2xl mx-auto mt-10 p-6">
+      
+      <div className="text-center mb-12 relative">
+        {/* Geometric Decor */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 border-4 border-bauhaus-black rotate-45 opacity-10"></div>
+        
+        <h2 className="text-5xl font-black uppercase tracking-tighter text-bauhaus-black mb-4">
+          CineRank <span className="text-bauhaus-red">Elo</span>
+        </h2>
+        <p className="text-lg font-medium text-gray-600 max-w-md mx-auto">
+          Upload your Letterboxd history to construct your definitive film hierarchy.
+        </p>
       </div>
 
       <div 
@@ -157,17 +151,19 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         className={`
-          border-2 border-dashed rounded-xl p-12 text-center transition-all cursor-pointer
-          ${isDragging ? 'border-lb-green bg-lb-green/10' : 'border-lb-gray hover:border-lb-text bg-lb-gray/20'}
+          relative border-4 border-dashed rounded-none p-16 text-center transition-all cursor-pointer bg-white shadow-hard-lg
+          ${isDragging ? 'border-bauhaus-blue bg-blue-50' : 'border-bauhaus-black hover:border-bauhaus-blue'}
         `}
       >
-        <div className="flex flex-col items-center gap-4">
-          <div className={`p-4 rounded-full ${isDragging ? 'bg-lb-green text-white' : 'bg-lb-gray text-lb-text'}`}>
-            <Upload size={32} />
+        <div className="flex flex-col items-center gap-6">
+          <div className={`p-6 border-4 border-bauhaus-black shadow-hard-sm ${isDragging ? 'bg-bauhaus-blue text-white' : 'bg-bauhaus-yellow text-bauhaus-black'}`}>
+            <Upload size={40} strokeWidth={3} />
           </div>
           <div>
-            <p className="text-lg font-medium text-white">Drag and drop CSV file</p>
-            <p className="text-sm text-lb-text mt-1">or click to browse</p>
+            <p className="text-2xl font-black uppercase text-bauhaus-black">Drop CSV File</p>
+            <p className="text-sm font-bold uppercase tracking-widest text-gray-500 mt-2">
+              watched.csv / diary.csv
+            </p>
           </div>
           <input 
             type="file" 
@@ -178,7 +174,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
           />
           <Button 
             onClick={() => document.getElementById('file-upload')?.click()}
-            variant="outline"
+            variant="primary"
           >
             Select File
           </Button>
@@ -186,35 +182,38 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
       </div>
 
       {loading && (
-        <div className="mt-4 text-center text-lb-green animate-pulse">
-          Parsing your movie history...
+        <div className="mt-8 text-center">
+          <div className="inline-block animate-spin w-8 h-8 border-4 border-bauhaus-black border-t-bauhaus-red rounded-full mb-2"></div>
+          <p className="font-bold uppercase tracking-widest">Processing Cinema...</p>
         </div>
       )}
 
       {error && (
-        <div className="mt-6 p-4 bg-red-900/30 border border-red-500/50 rounded flex items-center gap-3 text-red-200">
-          <AlertCircle size={20} />
-          <span>{error}</span>
+        <div className="mt-8 p-6 bg-bauhaus-red text-white border-4 border-bauhaus-black shadow-hard-md flex items-center gap-4">
+          <AlertCircle size={32} strokeWidth={3} />
+          <span className="font-bold">{error}</span>
         </div>
       )}
 
-      <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-lb-text">
-        <div className="bg-lb-gray/20 p-4 rounded border border-lb-gray/30">
-          <h3 className="font-bold text-white flex items-center gap-2 mb-2">
-            <FileText size={16} /> How to export?
+      <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white p-6 border-4 border-bauhaus-black shadow-hard-sm">
+          <h3 className="font-black uppercase text-bauhaus-blue flex items-center gap-2 mb-3 text-lg">
+            <FileText size={20} /> Export Guide
           </h3>
-          <ol className="list-decimal list-inside space-y-1">
-            <li>Go to Letterboxd Settings</li>
-            <li>Click "Import & Export"</li>
-            <li>Click "Export Data"</li>
-            <li>Unzip and find <code>watched.csv</code></li>
+          <ol className="list-decimal list-inside space-y-2 font-medium text-sm text-gray-700">
+            <li>Open Letterboxd Settings</li>
+            <li>Select "Import & Export"</li>
+            <li>Download "Export Data"</li>
+            <li>Use <code className="bg-gray-200 px-1 font-mono text-bauhaus-red">watched.csv</code></li>
           </ol>
         </div>
-        <div className="bg-lb-gray/20 p-4 rounded border border-lb-gray/30">
-          <h3 className="font-bold text-white flex items-center gap-2 mb-2">
-            <AlertCircle size={16} /> Privacy Note
+        <div className="bg-white p-6 border-4 border-bauhaus-black shadow-hard-sm">
+          <h3 className="font-black uppercase text-bauhaus-yellow flex items-center gap-2 mb-3 text-lg">
+            <AlertCircle size={20} /> Privacy First
           </h3>
-          <p>Your data is processed entirely in your browser. No movie data is sent to any server except for anonymous analysis requests if you enable AI features.</p>
+          <p className="font-medium text-sm text-gray-700 leading-relaxed">
+            Data stays in your browser. We process locally. Only AI requests (if used) are sent anonymously.
+          </p>
         </div>
       </div>
     </div>

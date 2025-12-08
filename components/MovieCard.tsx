@@ -1,6 +1,6 @@
 import React from 'react';
 import { Movie, AIAnalysis } from '../types';
-import { Star, TrendingUp, Award } from 'lucide-react';
+import { Star, TrendingUp, Trophy } from 'lucide-react';
 
 interface MovieCardProps {
   movie: Movie;
@@ -9,74 +9,111 @@ interface MovieCardProps {
   isWinning?: boolean;
 }
 
-const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, aiData, isWinning }) => {
-  // Deterministic placeholder based on ID for color
-  const hue = parseInt(movie.id.split('-').pop() || '0') * 137 % 360;
+const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, aiData }) => {
+  // Deterministic "Art" Generation based on ID
+  const seed = parseInt(movie.id.split('-').pop() || '0') + movie.name.length;
   
+  // Bauhaus palette choices
+  const colors = ['#D02020', '#1040C0', '#F0C020', '#121212', '#FFFFFF'];
+  const bgColors = ['#D02020', '#1040C0', '#F0C020']; // Red, Blue, Yellow backgrounds
+  
+  const getRand = (mod: number) => (seed * 137) % mod;
+  const bgColor = bgColors[seed % bgColors.length];
+  
+  // Generate 3 decorative shapes
+  const shapes = [1, 2, 3].map(i => {
+    const type = (seed + i) % 3; // 0: Circle, 1: Square, 2: Triangle
+    const color = colors[(seed + i * 2) % colors.length];
+    const size = 40 + ((seed * i * 17) % 60); // % width
+    const top = (seed * i * 23) % 80;
+    const left = (seed * i * 31) % 80;
+    const rotate = (seed * i * 45) % 360;
+    
+    return { type, color, size, top, left, rotate };
+  });
+
   return (
     <div 
       onClick={onClick}
-      className="group relative w-full h-full min-h-[400px] cursor-pointer bg-lb-gray rounded-xl overflow-hidden shadow-2xl transition-all duration-300 hover:scale-[1.02] hover:shadow-lb-green/20 ring-1 ring-white/10 hover:ring-lb-green/50"
+      className="group relative w-full cursor-pointer bg-white border-4 border-bauhaus-black shadow-hard-lg hover:shadow-hard-xl hover:-translate-y-2 transition-all duration-200 flex flex-col h-full overflow-hidden"
     >
-      {/* Background / Poster Placeholder */}
+      {/* 1. Geometric Art "Poster" Area (Top 2/3) */}
       <div 
-        className="absolute inset-0 opacity-40 transition-opacity group-hover:opacity-30"
-        style={{ 
-          backgroundColor: `hsl(${hue}, 60%, 20%)`,
-          backgroundImage: `linear-gradient(to bottom, transparent, #14181c)`
-        }} 
-      />
-      
-      {/* Content Container */}
-      <div className="absolute inset-0 p-8 flex flex-col justify-between z-10">
+        className="relative h-64 md:h-80 w-full overflow-hidden border-b-4 border-bauhaus-black"
+        style={{ backgroundColor: bgColor }}
+      >
+        {/* Geometric Composition */}
+        {shapes.map((s, idx) => (
+          <div
+            key={idx}
+            className="absolute border-4 border-bauhaus-black opacity-90"
+            style={{
+              width: `${s.size}%`,
+              height: s.type === 2 ? '0' : `${s.size}%`, // Height ignored for triangle CSS trick
+              top: `${s.top}%`,
+              left: `${s.left}%`,
+              transform: `rotate(${s.rotate}deg)`,
+              backgroundColor: s.type === 2 ? 'transparent' : s.color,
+              borderRadius: s.type === 0 ? '50%' : '0%',
+              // Triangle logic if needed, or simple CSS shapes
+              ...(s.type === 2 ? {
+                 width: 0, height: 0,
+                 borderLeft: `${s.size}px solid transparent`,
+                 borderRight: `${s.size}px solid transparent`,
+                 borderBottom: `${s.size * 1.5}px solid ${s.color}`,
+                 borderTop: 'none',
+                 backgroundColor: 'transparent',
+                 border: 'none', // Override base border for pure css triangle
+                 filter: 'drop-shadow(4px 4px 0px #121212)'
+              } : {})
+            }}
+          />
+        ))}
         
-        {/* Header */}
-        <div>
-          <div className="flex justify-between items-start">
-            <span className="bg-black/40 backdrop-blur px-3 py-1 rounded text-xs font-mono text-lb-text border border-white/10">
-              {movie.year}
-            </span>
-            {movie.rating && (
-              <div className="flex items-center gap-1 text-lb-green bg-black/40 backdrop-blur px-2 py-1 rounded border border-lb-green/20">
-                <Star size={12} fill="currentColor" />
-                <span className="text-xs font-bold">{movie.rating}</span>
-              </div>
-            )}
+        {/* Rating Badge Overlay */}
+        {movie.rating && (
+          <div className="absolute top-4 right-4 bg-white border-2 border-bauhaus-black px-3 py-1 shadow-hard-sm flex items-center gap-1">
+            <Star size={14} className="fill-bauhaus-yellow text-bauhaus-black" />
+            <span className="font-bold text-sm">{movie.rating}</span>
           </div>
-          
-          <h3 className="mt-4 text-3xl md:text-4xl font-serif font-bold text-white leading-tight drop-shadow-lg group-hover:text-lb-blue transition-colors">
+        )}
+
+        {/* Year Badge Overlay */}
+        <div className="absolute top-4 left-4 bg-bauhaus-black text-white px-3 py-1 font-mono text-sm font-bold shadow-hard-sm">
+          {movie.year}
+        </div>
+      </div>
+      
+      {/* 2. Content Area (Bottom 1/3) */}
+      <div className="p-6 flex flex-col justify-between flex-1 bg-white relative">
+        
+        <div>
+          <h3 className="text-2xl md:text-3xl font-black uppercase leading-none tracking-tight text-bauhaus-black mb-2 break-words">
             {movie.name}
           </h3>
           
-          <div className="flex gap-2 mt-4 flex-wrap">
-             <div className="flex items-center gap-1 text-xs text-lb-text bg-lb-dark/50 px-2 py-1 rounded">
+          <div className="flex flex-wrap gap-2 mt-3">
+             <div className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest bg-bauhaus-muted/30 px-2 py-1 border border-bauhaus-black">
                <TrendingUp size={12} /> ELO {Math.round(movie.elo)}
              </div>
-             <div className="flex items-center gap-1 text-xs text-lb-text bg-lb-dark/50 px-2 py-1 rounded">
-               <Award size={12} /> {movie.matches} Matches
+             <div className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest bg-bauhaus-muted/30 px-2 py-1 border border-bauhaus-black">
+               <Trophy size={12} /> {movie.matches} Matches
              </div>
           </div>
         </div>
 
-        {/* AI Vibe Section */}
+        {/* AI Vibe Section - Appears as a 'stamped' note */}
         {aiData ? (
-          <div className="space-y-3 animate-fade-in">
-            <div className="bg-lb-dark/80 backdrop-blur-md p-4 rounded-lg border-l-2 border-lb-blue shadow-lg">
-              <p className="text-sm text-lb-blue font-bold uppercase tracking-wider text-xs mb-1">Vibe Check</p>
-              <p className="text-white italic">"{aiData.vibe}"</p>
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              {aiData.strengths.map((s, i) => (
-                <span key={i} className="text-xs bg-white/10 px-2 py-1 rounded text-gray-300">
-                  {s}
-                </span>
-              ))}
+          <div className="mt-4 pt-4 border-t-2 border-bauhaus-black/20 animate-slide-up">
+            <div className="bg-bauhaus-yellow/20 p-3 border-l-4 border-bauhaus-blue">
+              <p className="text-xs font-black uppercase text-bauhaus-blue mb-1">Vibe Check</p>
+              <p className="text-sm font-medium italic">"{aiData.vibe}"</p>
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-            <span className="text-lb-green font-bold text-lg tracking-widest uppercase border-2 border-lb-green px-6 py-2 rounded">
-              Pick Me
+          <div className="mt-4 pt-4 border-t-2 border-bauhaus-black/20 opacity-50 group-hover:opacity-100 transition-opacity">
+            <span className="text-xs font-black uppercase text-bauhaus-red tracking-widest">
+              Click to Vote
             </span>
           </div>
         )}

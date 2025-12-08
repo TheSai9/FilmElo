@@ -36,12 +36,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ movies, onBack }) => {
       m.wins,
       m.losses
     ]);
-    
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(r => r.join(','))
-    ].join('\n');
-
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -53,111 +48,104 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ movies, onBack }) => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <div>
-          <Button onClick={onBack} variant="ghost" className="mb-2 pl-0 hover:bg-transparent hover:text-lb-green">
-            <ArrowLeft size={18} className="mr-1 inline" /> Back to Voting
-          </Button>
-          <h2 className="text-3xl font-serif font-bold text-white">Your Rankings</h2>
-          <p className="text-lb-text text-sm mt-1">
-            Based on {movies.reduce((acc, m) => acc + m.matches, 0) / 2} comparisons
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="relative flex-1 md:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-lb-text" size={16} />
-            <input 
-              type="text" 
-              placeholder="Search..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-lb-gray/50 border border-lb-gray rounded-full py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-lb-green"
-            />
-          </div>
-          <Button onClick={downloadCSV} variant="outline" className="whitespace-nowrap">
-            <Download size={18} />
-          </Button>
+    <div className="max-w-5xl mx-auto py-8 px-4">
+      {/* Header */}
+      <div className="bg-bauhaus-blue p-6 md:p-10 text-white border-4 border-bauhaus-black shadow-hard-lg mb-10 relative overflow-hidden">
+        {/* Abstract Background Shapes */}
+        <div className="absolute -right-10 -top-10 w-40 h-40 bg-bauhaus-red rounded-full border-4 border-bauhaus-black opacity-50"></div>
+        <div className="absolute right-20 -bottom-10 w-20 h-20 bg-bauhaus-yellow rotate-45 border-4 border-bauhaus-black opacity-50"></div>
+
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div>
+              <Button onClick={onBack} variant="ghost" className="mb-4 text-white hover:text-bauhaus-yellow pl-0 border-none shadow-none">
+                <ArrowLeft size={20} className="mr-2 inline" /> Return to Arena
+              </Button>
+              <h2 className="text-5xl font-black uppercase tracking-tighter">Leaderboard</h2>
+              <p className="mt-2 text-white/80 font-mono text-sm border-l-4 border-bauhaus-yellow pl-3">
+                {movies.reduce((acc, m) => acc + m.matches, 0) / 2} BATTLES RECORDED
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-bauhaus-black" size={18} />
+                <input 
+                  type="text" 
+                  placeholder="SEARCH FILMS..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full sm:w-64 bg-white border-2 border-bauhaus-black py-3 pl-10 pr-4 text-bauhaus-black font-bold placeholder:text-gray-400 focus:outline-none focus:shadow-hard-sm transition-all uppercase text-sm"
+                />
+              </div>
+              <Button onClick={downloadCSV} variant="yellow">
+                <Download size={18} />
+              </Button>
+            </div>
         </div>
       </div>
 
-      <div className="bg-lb-gray rounded-xl overflow-hidden shadow-xl border border-white/5">
+      {/* Table Container */}
+      <div className="bg-white border-4 border-bauhaus-black shadow-hard-lg">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-black/20 text-lb-text text-xs uppercase tracking-wider border-b border-white/5">
-                <th className="p-4 font-semibold w-16 text-center">Rank</th>
-                <th className="p-4 font-semibold">Film</th>
-                <th className="p-4 font-semibold w-24 text-right">ELO</th>
-                <th className="p-4 font-semibold w-24 text-center hidden sm:table-cell">W/L</th>
-                <th className="p-4 font-semibold w-24 text-center hidden sm:table-cell">Rating</th>
+              <tr className="bg-bauhaus-black text-white text-sm uppercase tracking-widest">
+                <th className="p-4 font-bold w-20 text-center">#</th>
+                <th className="p-4 font-bold border-l-2 border-white/20">Film</th>
+                <th className="p-4 font-bold text-right border-l-2 border-white/20 w-32">ELO</th>
+                <th className="p-4 font-bold text-center border-l-2 border-white/20 hidden sm:table-cell">W/L</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody>
               {filteredMovies.slice(0, 100).map((movie) => (
                 <tr 
                   key={movie.id} 
-                  className="hover:bg-white/5 transition-colors group"
+                  className="border-b-2 border-bauhaus-muted hover:bg-bauhaus-yellow/10 transition-colors group"
                 >
                   <td className="p-4 text-center">
                     <div className={`
-                      font-mono font-bold text-lg
-                      ${movie.rank === 1 ? 'text-yellow-400' : 
-                        movie.rank === 2 ? 'text-gray-300' : 
-                        movie.rank === 3 ? 'text-amber-600' : 'text-lb-text'}
+                      font-black text-xl w-10 h-10 flex items-center justify-center mx-auto border-2 border-bauhaus-black shadow-hard-sm
+                      ${movie.rank === 1 ? 'bg-bauhaus-yellow text-bauhaus-black' : 
+                        movie.rank === 2 ? 'bg-gray-300 text-bauhaus-black' : 
+                        movie.rank === 3 ? 'bg-bauhaus-red text-white' : 'bg-white text-bauhaus-black'}
                     `}>
                       {movie.rank}
                     </div>
                   </td>
                   <td className="p-4">
-                    <div className="flex items-center gap-4">
-                      {/* Simple visual colored square if no poster */}
-                      <div 
-                        className="w-10 h-14 rounded bg-lb-dark flex-shrink-0 shadow-inner"
-                        style={{ backgroundColor: `hsl(${parseInt(movie.id.split('-').pop()||'0')*137%360}, 50%, 30%)` }}
-                      ></div>
-                      <div>
-                        <div className="font-bold text-white group-hover:text-lb-blue transition-colors text-lg">
-                          {movie.name}
-                        </div>
-                        <div className="text-sm text-lb-text">{movie.year}</div>
-                      </div>
+                    <div className="flex flex-col">
+                      <span className="font-bold text-lg text-bauhaus-black uppercase tracking-tight group-hover:text-bauhaus-blue transition-colors">
+                        {movie.name}
+                      </span>
+                      <span className="text-xs font-mono text-gray-500 bg-gray-100 w-fit px-1 rounded-sm mt-1 border border-gray-300">
+                        {movie.year}
+                      </span>
                     </div>
                   </td>
                   <td className="p-4 text-right">
-                    <span className="font-mono font-bold text-lb-green text-lg">
+                    <span className="font-black text-xl text-bauhaus-black">
                       {Math.round(movie.elo)}
                     </span>
                     {movie.elo !== INITIAL_ELO && (
-                        <div className="text-[10px] text-lb-text">
+                        <div className={`text-[10px] font-bold ${movie.elo > INITIAL_ELO ? 'text-bauhaus-green' : 'text-gray-400'}`}>
                             {movie.elo > INITIAL_ELO ? '+' : ''}{Math.round(movie.elo - INITIAL_ELO)}
                         </div>
                     )}
                   </td>
                   <td className="p-4 text-center hidden sm:table-cell">
-                    <span className="text-xs text-white bg-white/10 px-2 py-1 rounded-full">
-                      {movie.wins} - {movie.losses}
+                    <span className="font-mono text-xs font-bold border border-bauhaus-black px-2 py-1 bg-white shadow-[2px_2px_0px_0px_black]">
+                      {movie.wins}W - {movie.losses}L
                     </span>
-                  </td>
-                  <td className="p-4 text-center hidden sm:table-cell">
-                     {movie.rating ? (
-                       <span className="text-lb-green font-bold">★ {movie.rating}</span>
-                     ) : <span className="text-lb-text/20">-</span>}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        {filteredMovies.length > 100 && (
-          <div className="p-4 text-center text-lb-text text-sm bg-black/20">
-            Showing top 100 of {filteredMovies.length} movies. Download CSV for full list.
-          </div>
-        )}
+        
         {filteredMovies.length === 0 && (
-            <div className="p-12 text-center text-lb-text">
-                No movies found matching "{searchTerm}"
+            <div className="p-12 text-center font-bold uppercase text-gray-400">
+                No films match your search
             </div>
         )}
       </div>

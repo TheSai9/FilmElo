@@ -16,42 +16,30 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
   const [currentPair, setCurrentPair] = useState<[number, number] | null>(null);
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
-  const [history, setHistory] = useState<number[]>([]); // Track voted pairs to avoid immediate repeats? Or just simplistic random.
 
   const pickNewPair = useCallback(() => {
     if (movies.length < 2) return;
-
-    // Smart pairing: occasionally pick movies with similar Elo to refine rankings
-    // Or pure random for variety. Let's do a mix.
-    // 70% chance of random, 30% chance of "close match"
     
     let idx1 = Math.floor(Math.random() * movies.length);
     let idx2 = Math.floor(Math.random() * movies.length);
-
-    const useSmartPairing = Math.random() > 0.7;
-
+    
+    const useSmartPairing = Math.random() > 0.6; // 60% chance smart pairing
     if (useSmartPairing) {
-        // Find someone close in ELO to idx1
         const targetElo = movies[idx1].elo;
-        // Filter candidates within 100 ELO points
         const candidates = movies.map((m, i) => ({ idx: i, diff: Math.abs(m.elo - targetElo) }))
                                  .filter(c => c.idx !== idx1 && c.diff < 200)
                                  .sort((a, b) => a.diff - b.diff);
-        
         if (candidates.length > 0) {
-            // Pick a random one from top 5 closest
-            const poolSize = Math.min(candidates.length, 5);
+            const poolSize = Math.min(candidates.length, 6);
             idx2 = candidates[Math.floor(Math.random() * poolSize)].idx;
         }
     }
 
-    // Fallback: ensure they aren't same
     while (idx1 === idx2) {
       idx2 = Math.floor(Math.random() * movies.length);
     }
-
     setCurrentPair([idx1, idx2]);
-    setAiAnalysis(null); // Reset AI data
+    setAiAnalysis(null);
   }, [movies]);
 
   useEffect(() => {
@@ -61,13 +49,10 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
   const handleVote = (winnerIndex: number, loserIndex: number) => {
     const winner = movies[winnerIndex];
     const loser = movies[loserIndex];
-
     const { winner: newWinner, loser: newLoser } = updateMovieStats(winner, loser);
-
     const newMovies = [...movies];
     newMovies[winnerIndex] = newWinner;
     newMovies[loserIndex] = newLoser;
-
     onUpdateMovies(newMovies);
     pickNewPair();
   };
@@ -77,76 +62,96 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
     setLoadingAi(true);
     const m1 = movies[currentPair[0]];
     const m2 = movies[currentPair[1]];
-    
     const analysis = await getMovieComparisonVibe(m1.name, m1.year, m2.name, m2.year);
-    if (analysis) {
-      setAiAnalysis(analysis);
-    }
+    if (analysis) setAiAnalysis(analysis);
     setLoadingAi(false);
   };
 
-  if (!currentPair) return <div className="text-center p-20">Loading movies...</div>;
+  if (!currentPair) return (
+    <div className="flex items-center justify-center h-[50vh]">
+        <div className="text-2xl font-black uppercase tracking-tighter animate-pulse">Loading Cinema...</div>
+    </div>
+  );
 
   const m1 = movies[currentPair[0]];
   const m2 = movies[currentPair[1]];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-100px)] max-w-6xl mx-auto px-4">
+    <div className="flex flex-col min-h-[calc(100vh-100px)] max-w-7xl mx-auto px-4 md:px-8 py-6">
+      
       {/* Header Controls */}
-      <div className="flex justify-between items-center mb-6 py-4 border-b border-white/5">
-        <h2 className="text-2xl font-serif font-bold text-white tracking-wide">
-          Face Off <span className="text-lb-green ml-2 text-sm font-sans font-normal uppercase tracking-widest">Vote for the better film</span>
-        </h2>
-        <div className="flex gap-3">
-           <Button onClick={pickNewPair} variant="ghost" title="Skip this pair">
+      <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4 border-b-4 border-bauhaus-black pb-6 bg-white p-6 shadow-hard-md">
+        <div>
+          <h2 className="text-4xl font-black uppercase tracking-tighter text-bauhaus-black">
+            Face Off
+          </h2>
+          <p className="text-bauhaus-blue font-bold uppercase tracking-widest text-sm mt-1">
+            Construct Your Canon
+          </p>
+        </div>
+        <div className="flex gap-4">
+           <Button onClick={pickNewPair} variant="outline" title="Skip Pair">
              <Shuffle size={20} />
            </Button>
-           <Button onClick={onFinish} variant="secondary" className="flex items-center gap-2">
-             <BarChart2 size={18} /> View Rankings
+           <Button onClick={onFinish} variant="primary" className="flex items-center gap-2">
+             <BarChart2 size={18} /> Rankings
            </Button>
         </div>
       </div>
 
-      {/* Arena */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-8 items-center relative">
-        
-        {/* VS Badge */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
-          <div className="bg-lb-orange text-white font-black text-xl rounded-full w-12 h-12 flex items-center justify-center shadow-lg border-4 border-lb-dark">
+      {/* Arena Grid */}
+      <div className="flex-1 relative">
+        {/* VS Badge - Geometric Centerpiece */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none hidden md:flex">
+          <div className="bg-bauhaus-yellow text-bauhaus-black font-black text-2xl w-20 h-20 flex items-center justify-center border-4 border-bauhaus-black shadow-hard-md rotate-3">
             VS
           </div>
         </div>
 
-        <MovieCard 
-          movie={m1} 
-          onClick={() => handleVote(currentPair[0], currentPair[1])} 
-          aiData={aiAnalysis?.movie1}
-        />
-        <MovieCard 
-          movie={m2} 
-          onClick={() => handleVote(currentPair[1], currentPair[0])} 
-          aiData={aiAnalysis?.movie2}
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-stretch">
+            <MovieCard 
+              movie={m1} 
+              onClick={() => handleVote(currentPair[0], currentPair[1])} 
+              aiData={aiAnalysis?.movie1}
+            />
+            
+            {/* Mobile VS Badge */}
+            <div className="md:hidden flex justify-center -my-4 z-10">
+               <div className="bg-bauhaus-yellow text-bauhaus-black font-black text-xl w-14 h-14 flex items-center justify-center border-4 border-bauhaus-black shadow-hard-sm">VS</div>
+            </div>
+
+            <MovieCard 
+              movie={m2} 
+              onClick={() => handleVote(currentPair[1], currentPair[0])} 
+              aiData={aiAnalysis?.movie2}
+            />
+        </div>
       </div>
 
-      {/* AI Controls */}
-      <div className="mt-8 mb-4 flex flex-col items-center justify-center min-h-[100px]">
+      {/* AI Controls & Insight */}
+      <div className="mt-12 flex flex-col items-center justify-center min-h-[120px]">
         {aiAnalysis ? (
-           <div className="max-w-2xl text-center bg-white/5 p-4 rounded-lg border border-white/10 animate-fade-in-up">
-             <p className="text-lb-text text-sm mb-2 uppercase tracking-widest font-bold">AI Comparison</p>
-             <p className="text-lg font-serif italic text-white">"{aiAnalysis.comparison}"</p>
+           <div className="max-w-3xl w-full text-center bg-white border-4 border-bauhaus-black p-8 shadow-hard-lg animate-slide-up relative overflow-hidden">
+             {/* Decorative Corner Triangle */}
+             <div className="absolute top-0 right-0 w-0 h-0 border-l-[40px] border-l-transparent border-t-[40px] border-t-bauhaus-red"></div>
+             
+             <p className="text-bauhaus-blue text-xs font-black uppercase tracking-[0.2em] mb-3">AI Analysis</p>
+             <p className="text-xl md:text-2xl font-bold font-sans italic text-bauhaus-black leading-relaxed">
+                "{aiAnalysis.comparison}"
+             </p>
            </div>
         ) : (
           <Button 
             onClick={fetchAiInsight} 
             disabled={loadingAi}
-            className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 border-none text-white shadow-lg shadow-purple-900/20"
+            variant="yellow"
+            className="flex items-center gap-2 px-8 py-4 text-base"
           >
             {loadingAi ? (
-              <span className="animate-pulse">Consulting the oracle...</span>
+              <span className="animate-pulse">Consulting Oracle...</span>
             ) : (
               <>
-                <Sparkles size={18} /> tough choice? Ask AI
+                <Sparkles size={20} /> Tough Choice? Ask AI
               </>
             )}
           </Button>
