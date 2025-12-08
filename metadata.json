@@ -1,0 +1,5 @@
+{
+  "name": "CineRank Elo",
+  "description": "A Letterboxd movie ranking application using an Elo rating system. Upload your data, compare movies 1v1, and discover your true favorites.",
+  "requestFramePermissions": []
+}
