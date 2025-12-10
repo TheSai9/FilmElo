@@ -4,15 +4,8 @@
 
 Built with a bold **Bauhaus Design System**, it rejects generic web aesthetics in favor of constructivist geometry, primary colors, and functional art.
 
-![CineRank Hero Image](https://placehold.co/1200x600/F0F0F0/121212?text=CineRank+Bauhaus)
-
-## 🎨 Design Philosophy: Form Follows Function
-
-This project implements a strict **Bauhaus Design System**:
--   **Geometric Purity**: All UI elements are constructed from circles, squares, and triangles.
--   **Primary Palette**: Strictly uses `#D02020` (Red), `#1040C0` (Blue), `#F0C020` (Yellow), and Stark Black `#121212`.
--   **Hard Shadows**: No soft blurs. Shadows are hard, offset blocks that create depth through layering.
--   **Constructivist Typography**: Massive, uppercase sans-serif headings (**Outfit** font) with tight tracking.
+![CineRank Hero Image](<img width="839" height="338" alt="image" src="https://github.com/user-attachments/assets/2ba48387-703e-4d25-8fc9-fc1e979bb2a9" />
+)
 
 ## ✨ Key Features
 
@@ -94,15 +87,18 @@ Speed up your ranking process with keyboard controls:
 
 ### File Upload & Configuration
 _Choose your starting strategy with a tactile, geometric interface._
-![Upload Screen](https://placehold.co/800x450/F0F0F0/121212?text=Upload+Interface)
+![Upload Screen](<img width="761" height="721" alt="image" src="https://github.com/user-attachments/assets/11c287b7-752f-48a7-a50f-df84ad453681" />
+)
 
 ### 1v1 Arena
 _High-contrast voting cards with generated art and fetched posters._
-![Voting Arena](https://placehold.co/800x450/F0F0F0/121212?text=Voting+Arena)
+![Voting Arena](<img width="1242" height="680" alt="image" src="https://github.com/user-attachments/assets/9d9a7d4e-8968-47a3-8311-f2ab79c2048a" />
+)
 
 ### Leaderboard
 _Sortable, filterable rankings with "hard" Bauhaus styling._
-![Leaderboard](https://placehold.co/800x450/F0F0F0/121212?text=Leaderboard)
+![Leaderboard](<img width="1011" height="718" alt="image" src="https://github.com/user-attachments/assets/ea975717-19f3-4c3c-b46b-dfac3dc1d9b3" />
+)
 
 ## 🛠️ Tech Stack
 
