@@ -1,3 +1,4 @@
+
 export interface Movie {
   id: string;
   name: string;
@@ -33,3 +34,12 @@ export interface AIAnalysis {
   };
   comparison: string;
 }
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+}
+
+export type SyncStatus = 'idle' | 'syncing' | 'saved' | 'error';
