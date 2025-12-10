@@ -16,8 +16,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
   const [loading, setLoading] = useState(false);
   const [eloStrategy, setEloStrategy] = useState<EloStrategy>('fixed');
 
-  const parseCSV = (text: string): Movie[] => {
-    const movies: Movie[] = [];
+  // Helper: Parse Raw CSV text into objects
+  const parseCSVRaw = (text: string) => {
     const rows: string[][] = [];
     let currentRow: string[] = [];
     let currentField = '';
@@ -55,71 +55,121 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
       rows.push(currentRow);
     }
 
-    if (rows.length < 2) throw new Error("File appears empty or invalid.");
+    return rows;
+  };
 
-    const cleanRows = rows.filter(r => r.length > 0 && (r.length > 1 || r[0] !== ''));
-    if (cleanRows.length < 2) throw new Error("File appears empty or invalid.");
-
-    const headerLine = cleanRows[0];
-    const headers = headerLine.map(h => h.trim().toLowerCase());
+  const processFiles = async (files: FileList | File[]) => {
+    setLoading(true);
+    setError(null);
     
-    const nameIndex = headers.indexOf('name');
-    const yearIndex = headers.indexOf('year');
-    const ratingIndex = headers.indexOf('rating');
-    const uriIndex = headers.indexOf('letterboxd uri');
+    const movieMap = new Map<string, Omit<Movie, 'elo' | 'matches' | 'wins' | 'losses'>>();
+    let filesProcessed = 0;
+    let hasRatings = false;
 
-    if (nameIndex === -1 || yearIndex === -1) {
-      throw new Error("Missing required columns: 'Name' and 'Year'.");
-    }
+    try {
+      // 1. Parse all files and merge into map
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const text = await file.text();
+        const rows = parseCSVRaw(text);
 
-    for (let i = 1; i < cleanRows.length; i++) {
-      const columns = cleanRows[i];
-      if (columns.length <= Math.max(nameIndex, yearIndex)) continue;
+        if (rows.length < 2) continue; // Skip empty files
 
-      const name = columns[nameIndex]?.trim();
-      const year = columns[yearIndex]?.trim();
-      
-      if (name && year) {
-        const ratingVal = ratingIndex > -1 ? parseFloat(columns[ratingIndex] || '0') : 0;
+        // Clean empty rows
+        const cleanRows = rows.filter(r => r.length > 0 && (r.length > 1 || r[0] !== ''));
+        if (cleanRows.length < 2) continue;
+
+        const headerLine = cleanRows[0];
+        const headers = headerLine.map(h => h.trim().toLowerCase());
+        
+        const nameIndex = headers.indexOf('name');
+        const yearIndex = headers.indexOf('year');
+        const ratingIndex = headers.indexOf('rating');
+        const uriIndex = headers.indexOf('letterboxd uri');
+
+        if (nameIndex === -1 || yearIndex === -1) {
+          // Skip files that don't look like movie lists
+          console.warn(`Skipping file ${file.name}: missing Name/Year headers`);
+          continue;
+        }
+        
+        filesProcessed++;
+
+        for (let r = 1; r < cleanRows.length; r++) {
+          const columns = cleanRows[r];
+          if (columns.length <= Math.max(nameIndex, yearIndex)) continue;
+
+          const name = columns[nameIndex]?.trim();
+          const year = columns[yearIndex]?.trim();
+          
+          if (name && year) {
+            const key = `${name.toLowerCase()}-${year}`;
+            
+            // Extract rating if available
+            let ratingVal: number | undefined = undefined;
+            if (ratingIndex > -1) {
+                const parsed = parseFloat(columns[ratingIndex]);
+                if (!isNaN(parsed) && parsed > 0) {
+                    ratingVal = parsed;
+                    hasRatings = true;
+                }
+            }
+
+            const uri = uriIndex > -1 ? columns[uriIndex] : undefined;
+
+            const existing = movieMap.get(key);
+            
+            // Merge logic: prioritize entry with rating or URI
+            movieMap.set(key, {
+              id: existing?.id || `${name}-${year}-${r}`, // Keep existing ID if possible
+              name: existing?.name || name,
+              year: existing?.year || year,
+              rating: ratingVal || existing?.rating, // New rating overrides (or fills)
+              uri: uri || existing?.uri,
+              posterPath: existing?.posterPath
+            });
+          }
+        }
+      }
+
+      if (filesProcessed === 0) {
+        throw new Error("No valid CSV files found. Headers must include 'Name' and 'Year'.");
+      }
+
+      if (eloStrategy === 'rating' && !hasRatings) {
+         throw new Error("Star Power strategy selected but no ratings found. Please upload 'ratings.csv'.");
+      }
+
+      // 2. Convert to Movie array and apply ELO Strategy
+      const movies: Movie[] = Array.from(movieMap.values()).map(m => {
         let initialElo = INITIAL_ELO;
 
-        if (eloStrategy === 'rating' && ratingVal > 0) {
+        if (eloStrategy === 'rating' && m.rating) {
           // Map 0.5 - 5.0 stars to roughly 700 - 1600 Elo
           // 3.0 stars = 1200 Elo
-          // 1 star difference = 200 Elo difference
-          initialElo = 1200 + (ratingVal - 3) * 200;
+          // 0.5 stars = 700 Elo (1200 - 2.5 * 200)
+          // 5.0 stars = 1600 Elo (1200 + 2.0 * 200)
+          initialElo = 1200 + (m.rating - 3) * 200;
         }
 
-        movies.push({
-          id: `${name}-${year}-${i}`,
-          name: name,
-          year: year,
-          rating: ratingVal > 0 ? ratingVal : undefined,
+        return {
+          ...m,
           elo: initialElo,
           matches: 0,
           wins: 0,
-          losses: 0,
-          uri: uriIndex > -1 ? columns[uriIndex] : undefined
-        });
-      }
-    }
-    return movies;
-  };
+          losses: 0
+        };
+      });
 
-  const handleFile = async (file: File) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const text = await file.text();
-      const parsedMovies = parseCSV(text);
-      if (parsedMovies.length === 0) {
-        setError("No valid movies found in CSV.");
-      } else {
-        onDataLoaded(parsedMovies);
+      if (movies.length === 0) {
+        throw new Error("No movies found in files.");
       }
+
+      onDataLoaded(movies);
+
     } catch (e: any) {
       console.error(e);
-      setError(e.message || "Failed to parse CSV.");
+      setError(e.message || "Failed to parse CSV files.");
     } finally {
       setLoading(false);
     }
@@ -128,10 +178,10 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFiles(e.dataTransfer.files);
     }
-  }, [eloStrategy]); // Dependency on eloStrategy so the latest value is used
+  }, [eloStrategy]); 
 
   const onDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -202,10 +252,10 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
               <span className="font-black uppercase text-xl tracking-tight">Star Power</span>
             </div>
             <p className={`text-sm font-medium ${eloStrategy === 'rating' ? 'text-blue-200' : 'text-gray-600'}`}>
-              Start based on your Letterboxd ratings.
+              Start based on Letterboxd ratings.
               <br/>
               <span className="text-xs font-mono opacity-80 mt-1 block">
-                0.5★ = 700 ELO ... 5★ = 1600 ELO
+                Requires <strong>ratings.csv</strong>
               </span>
             </p>
             {eloStrategy === 'rating' && (
@@ -213,6 +263,16 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
             )}
           </button>
         </div>
+        
+        {eloStrategy === 'rating' && (
+           <div className="mt-4 p-4 bg-blue-50 border-l-4 border-bauhaus-blue text-sm text-bauhaus-blue font-bold animate-slide-up flex items-start gap-3 shadow-hard-sm">
+              <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
+              <span>
+                  For "Star Power", you MUST upload <code>ratings.csv</code>. 
+                  <br/><span className="font-normal opacity-80">You can select both <code>ratings.csv</code> and <code>watched.csv</code> at the same time to include unrated movies.</span>
+              </span>
+           </div>
+        )}
       </div>
 
       <div 
@@ -229,23 +289,26 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
             <Upload size={40} strokeWidth={3} />
           </div>
           <div>
-            <p className="text-2xl font-black uppercase text-bauhaus-black">Drop CSV File</p>
+            <p className="text-2xl font-black uppercase text-bauhaus-black">
+                {eloStrategy === 'rating' ? 'Drop ratings.csv' : 'Drop CSV File'}
+            </p>
             <p className="text-sm font-bold uppercase tracking-widest text-gray-500 mt-2">
-              watched.csv / diary.csv
+               {eloStrategy === 'rating' ? '(And optionally watched.csv)' : 'watched.csv / diary.csv'}
             </p>
           </div>
           <input 
             type="file" 
             accept=".csv"
+            multiple // Allow multiple files
             className="hidden"
             id="file-upload"
-            onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+            onChange={(e) => e.target.files && processFiles(e.target.files)}
           />
           <Button 
             onClick={() => document.getElementById('file-upload')?.click()}
             variant="primary"
           >
-            Select File
+            Select Files
           </Button>
         </div>
       </div>
@@ -272,8 +335,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
           <ol className="list-decimal list-inside space-y-2 font-medium text-sm text-gray-700">
             <li>Open Letterboxd Settings</li>
             <li>Select "Import & Export"</li>
-            <li>Download "Export Data"</li>
-            <li>Use <code className="bg-gray-200 px-1 font-mono text-bauhaus-red">watched.csv</code></li>
+            <li>Download "Export Data" (Zip)</li>
+            <li>Extract and use <code className="bg-gray-200 px-1 font-mono text-bauhaus-red">ratings.csv</code> or <code className="bg-gray-200 px-1 font-mono text-bauhaus-red">watched.csv</code></li>
           </ol>
         </div>
         <div className="bg-white p-6 border-4 border-bauhaus-black shadow-hard-sm">
