@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Movie, AIAnalysis } from '../types';
 import { updateMovieStats } from '../services/eloCalculator';
 import { getMovieComparisonVibe } from '../services/geminiService';
+import { fetchMoviePoster } from '../services/tmdbService';
 import MovieCard from './MovieCard';
 import Button from './Button';
 import { Sparkles, Shuffle, BarChart2, Undo2, Keyboard } from 'lucide-react';
@@ -50,6 +51,44 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
     if (!currentPair) pickNewPair();
   }, [pickNewPair, currentPair]);
 
+  // Lazy Load Posters for Current Pair
+  useEffect(() => {
+    if (!currentPair) return;
+
+    const loadPosters = async () => {
+      const idx1 = currentPair[0];
+      const idx2 = currentPair[1];
+      const m1 = movies[idx1];
+      const m2 = movies[idx2];
+      let updated = false;
+      const newMovies = [...movies];
+
+      if (!m1.posterPath) {
+        const path = await fetchMoviePoster(m1.name, m1.year);
+        if (path) {
+          newMovies[idx1] = { ...m1, posterPath: path };
+          updated = true;
+        }
+      }
+
+      if (!m2.posterPath) {
+        const path = await fetchMoviePoster(m2.name, m2.year);
+        if (path) {
+          newMovies[idx2] = { ...m2, posterPath: path };
+          updated = true;
+        }
+      }
+
+      if (updated) {
+        // We do NOT add to history for purely cosmetic updates like posters
+        // to avoid undoing just a poster load.
+        onUpdateMovies(newMovies);
+      }
+    };
+
+    loadPosters();
+  }, [currentPair, movies, onUpdateMovies]);
+
   const handleVote = useCallback((winnerIndex: number, loserIndex: number) => {
     // Save current state to history before modifying
     setHistory(prev => [...prev.slice(-10), [...movies]]); // Keep last 10 states
@@ -71,7 +110,7 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
     const previousState = history[history.length - 1];
     setHistory(prev => prev.slice(0, -1));
     onUpdateMovies(previousState);
-    pickNewPair(); // Re-roll or we could try to restore exact pair, but re-roll is simpler
+    pickNewPair(); 
   };
 
   const fetchAiInsight = async () => {

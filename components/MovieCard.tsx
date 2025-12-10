@@ -1,5 +1,5 @@
-import React from 'react';
-import { Movie, AIAnalysis } from '../types';
+import React, { useState } from 'react';
+import { Movie } from '../types';
 import { Star, TrendingUp, Trophy } from 'lucide-react';
 
 interface MovieCardProps {
@@ -10,6 +10,8 @@ interface MovieCardProps {
 }
 
 const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, aiData }) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+
   // Deterministic "Art" Generation based on ID
   const seed = parseInt(movie.id.split('-').pop() || '0') + movie.name.length;
   
@@ -37,49 +39,63 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, aiData }) => {
       onClick={onClick}
       className="group relative w-full cursor-pointer bg-white border-4 border-bauhaus-black shadow-hard-lg hover:shadow-hard-xl hover:-translate-y-2 transition-all duration-200 flex flex-col h-full overflow-hidden"
     >
-      {/* 1. Geometric Art "Poster" Area (Top 2/3) */}
+      {/* 1. Poster / Art Area (Top 2/3) */}
       <div 
-        className="relative h-64 md:h-80 w-full overflow-hidden border-b-4 border-bauhaus-black"
-        style={{ backgroundColor: bgColor }}
+        className="relative h-64 md:h-80 w-full overflow-hidden border-b-4 border-bauhaus-black bg-gray-100"
       >
-        {/* Geometric Composition */}
-        {shapes.map((s, idx) => (
-          <div
-            key={idx}
-            className="absolute border-4 border-bauhaus-black opacity-90"
-            style={{
-              width: `${s.size}%`,
-              height: s.type === 2 ? '0' : `${s.size}%`, // Height ignored for triangle CSS trick
-              top: `${s.top}%`,
-              left: `${s.left}%`,
-              transform: `rotate(${s.rotate}deg)`,
-              backgroundColor: s.type === 2 ? 'transparent' : s.color,
-              borderRadius: s.type === 0 ? '50%' : '0%',
-              // Triangle logic if needed, or simple CSS shapes
-              ...(s.type === 2 ? {
-                 width: 0, height: 0,
-                 borderLeft: `${s.size}px solid transparent`,
-                 borderRight: `${s.size}px solid transparent`,
-                 borderBottom: `${s.size * 1.5}px solid ${s.color}`,
-                 borderTop: 'none',
-                 backgroundColor: 'transparent',
-                 border: 'none', // Override base border for pure css triangle
-                 filter: 'drop-shadow(4px 4px 0px #121212)'
-              } : {})
-            }}
+        {/* Fallback Geometric Composition - Always rendered but covered by image if present */}
+        <div className="absolute inset-0 w-full h-full" style={{ backgroundColor: bgColor }}>
+           {shapes.map((s, idx) => (
+            <div
+              key={idx}
+              className="absolute border-4 border-bauhaus-black opacity-90"
+              style={{
+                width: `${s.size}%`,
+                height: s.type === 2 ? '0' : `${s.size}%`,
+                top: `${s.top}%`,
+                left: `${s.left}%`,
+                transform: `rotate(${s.rotate}deg)`,
+                backgroundColor: s.type === 2 ? 'transparent' : s.color,
+                borderRadius: s.type === 0 ? '50%' : '0%',
+                ...(s.type === 2 ? {
+                   width: 0, height: 0,
+                   borderLeft: `${s.size}px solid transparent`,
+                   borderRight: `${s.size}px solid transparent`,
+                   borderBottom: `${s.size * 1.5}px solid ${s.color}`,
+                   borderTop: 'none',
+                   backgroundColor: 'transparent',
+                   border: 'none',
+                   filter: 'drop-shadow(4px 4px 0px #121212)'
+                } : {})
+              }}
+            />
+          ))}
+        </div>
+
+        {/* TMDB Poster Image */}
+        {movie.posterPath && (
+          <img 
+            src={movie.posterPath} 
+            alt={`Poster for ${movie.name}`}
+            className={`
+              absolute inset-0 w-full h-full object-cover transition-all duration-300
+              grayscale group-hover:grayscale-0
+              ${imageLoaded ? 'opacity-100' : 'opacity-0'}
+            `}
+            onLoad={() => setImageLoaded(true)}
           />
-        ))}
+        )}
         
         {/* Rating Badge Overlay */}
         {movie.rating && (
-          <div className="absolute top-4 right-4 bg-white border-2 border-bauhaus-black px-3 py-1 shadow-hard-sm flex items-center gap-1">
+          <div className="absolute top-4 right-4 bg-white border-2 border-bauhaus-black px-3 py-1 shadow-hard-sm flex items-center gap-1 z-10">
             <Star size={14} className="fill-bauhaus-yellow text-bauhaus-black" />
             <span className="font-bold text-sm">{movie.rating}</span>
           </div>
         )}
 
         {/* Year Badge Overlay */}
-        <div className="absolute top-4 left-4 bg-bauhaus-black text-white px-3 py-1 font-mono text-sm font-bold shadow-hard-sm">
+        <div className="absolute top-4 left-4 bg-bauhaus-black text-white px-3 py-1 font-mono text-sm font-bold shadow-hard-sm z-10">
           {movie.year}
         </div>
       </div>
@@ -102,7 +118,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, aiData }) => {
           </div>
         </div>
 
-        {/* AI Vibe Section - Appears as a 'stamped' note */}
+        {/* AI Vibe Section */}
         {aiData ? (
           <div className="mt-4 pt-4 border-t-2 border-bauhaus-black/20 animate-slide-up">
             <div className="bg-bauhaus-yellow/20 p-3 border-l-4 border-bauhaus-blue">

@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Movie } from '../types';
-import { Trophy, ArrowLeft, Download, Search, ArrowUpDown, Calendar, Hash, Award } from 'lucide-react';
+import { Trophy, ArrowLeft, Download, Search, ArrowUpDown, Calendar, Hash, Award, ImageIcon } from 'lucide-react';
 import Button from './Button';
 import { INITIAL_ELO } from '../constants';
 
@@ -54,11 +54,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ movies, onBack }) => {
     });
 
     // 3. Add Ranks (based on Elo regardless of display sort, usually)
-    // Actually, rank should probably reflect the current sort view or always be Elo?
-    // Let's make "Rank" column always be the Elo Rank.
-    // So we need the original Elo map.
-    
-    // Efficient way: Sort full list by Elo first to get true ranks
     const eloSorted = [...movies].sort((a, b) => b.elo - a.elo);
     const idToRank = new Map(eloSorted.map((m, i) => [m.id, i + 1]));
 
@@ -191,13 +186,25 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ movies, onBack }) => {
                     </div>
                   </td>
                   <td className="p-4">
-                    <div className="flex flex-col">
-                      <span className="font-bold text-lg text-bauhaus-black uppercase tracking-tight group-hover:text-bauhaus-blue transition-colors">
-                        {movie.name}
-                      </span>
-                      <span className="text-xs font-mono text-gray-500 bg-gray-100 w-fit px-1 rounded-sm mt-1 border border-gray-300">
-                        {movie.year}
-                      </span>
+                    <div className="flex items-center gap-4">
+                      {/* Thumbnail with fallback */}
+                      <div className="w-10 h-14 bg-gray-200 border-2 border-bauhaus-black flex-shrink-0 relative overflow-hidden">
+                          {movie.posterPath ? (
+                              <img src={movie.posterPath} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                  <ImageIcon size={16} />
+                              </div>
+                          )}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-lg text-bauhaus-black uppercase tracking-tight group-hover:text-bauhaus-blue transition-colors">
+                          {movie.name}
+                        </span>
+                        <span className="text-xs font-mono text-gray-500 bg-gray-100 w-fit px-1 rounded-sm mt-1 border border-gray-300">
+                          {movie.year}
+                        </span>
+                      </div>
                     </div>
                   </td>
                   <td className="p-4 text-right">

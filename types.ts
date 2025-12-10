@@ -8,6 +8,7 @@ export interface Movie {
   wins: number;
   losses: number;
   uri?: string; // Letterboxd URI
+  posterPath?: string; // TMDB Poster Path
 }
 
 export enum AppView {
