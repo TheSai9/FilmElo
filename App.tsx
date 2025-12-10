@@ -1,17 +1,53 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Movie, AppView } from './types';
 import FileUpload from './components/FileUpload';
 import VotingArena from './components/VotingArena';
 import Leaderboard from './components/Leaderboard';
-import { Film } from 'lucide-react';
+import { Film, Trash2 } from 'lucide-react';
+import { STORAGE_KEY } from './constants';
+import Button from './components/Button';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.UPLOAD);
   const [movies, setMovies] = useState<Movie[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Load from Storage on Mount
+  useEffect(() => {
+    const savedData = localStorage.getItem(STORAGE_KEY);
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMovies(parsed);
+          setView(AppView.VOTE);
+        }
+      } catch (e) {
+        console.error("Failed to load saved data", e);
+      }
+    }
+    setIsInitialized(true);
+  }, []);
+
+  // Save to Storage on Update
+  useEffect(() => {
+    if (isInitialized && movies.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(movies));
+    }
+  }, [movies, isInitialized]);
 
   const handleDataLoaded = (data: Movie[]) => {
     setMovies(data);
     setView(AppView.VOTE);
+  };
+
+  const handleReset = () => {
+    if (confirm("Are you sure? This will delete all your ranking progress.")) {
+      localStorage.removeItem(STORAGE_KEY);
+      setMovies([]);
+      setView(AppView.UPLOAD);
+    }
   };
 
   const renderContent = () => {
@@ -37,6 +73,8 @@ const App: React.FC = () => {
         return <div>Error</div>;
     }
   };
+
+  if (!isInitialized) return null;
 
   return (
     <div className="min-h-screen bg-bauhaus-bg text-bauhaus-text font-sans selection:bg-bauhaus-yellow selection:text-bauhaus-black flex flex-col">
@@ -69,9 +107,18 @@ const App: React.FC = () => {
           
           <div className="flex items-center gap-4">
              {movies.length > 0 && (
-               <div className="hidden md:flex items-center gap-2 px-4 py-1 bg-bauhaus-black text-white font-mono text-xs font-bold border-2 border-transparent">
-                  <span className="text-bauhaus-yellow">●</span> {movies.length} FILMS LOADED
-               </div>
+               <>
+                 <div className="hidden md:flex items-center gap-2 px-4 py-1 bg-bauhaus-black text-white font-mono text-xs font-bold border-2 border-transparent">
+                    <span className="text-bauhaus-yellow">●</span> {movies.length} FILMS LOADED
+                 </div>
+                 <button 
+                    onClick={handleReset}
+                    className="p-2 text-bauhaus-black hover:text-bauhaus-red transition-colors"
+                    title="Reset Data"
+                 >
+                   <Trash2 size={20} />
+                 </button>
+               </>
              )}
           </div>
         </div>

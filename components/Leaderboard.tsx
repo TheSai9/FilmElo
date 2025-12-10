@@ -1,6 +1,7 @@
+
 import React, { useMemo, useState } from 'react';
 import { Movie } from '../types';
-import { Trophy, ArrowLeft, Download, Search } from 'lucide-react';
+import { Trophy, ArrowLeft, Download, Search, ArrowUpDown, Calendar, Hash, Award } from 'lucide-react';
 import Button from './Button';
 import { INITIAL_ELO } from '../constants';
 
@@ -9,25 +10,69 @@ interface LeaderboardProps {
   onBack: () => void;
 }
 
+type SortField = 'elo' | 'name' | 'year' | 'matches';
+type SortDirection = 'asc' | 'desc';
+
 const Leaderboard: React.FC<LeaderboardProps> = ({ movies, onBack }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortField, setSortField] = useState<SortField>('elo');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
-  const sortedMovies = useMemo(() => {
-    return [...movies]
-      .sort((a, b) => b.elo - a.elo)
-      .map((m, i) => ({ ...m, rank: i + 1 }));
-  }, [movies]);
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc'); // Default to desc for new fields usually
+    }
+  };
 
-  const filteredMovies = useMemo(() => {
-    return sortedMovies.filter(m => 
+  const processedMovies = useMemo(() => {
+    // 1. Filter
+    const filtered = movies.filter(m => 
       m.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [sortedMovies, searchTerm]);
+
+    // 2. Sort
+    const sorted = [...filtered].sort((a, b) => {
+      let valA: any = a[sortField];
+      let valB: any = b[sortField];
+
+      // Clean up strings for comparison
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+
+      // Handle Year which is string in type but number conceptually
+      if (sortField === 'year') {
+         valA = parseInt(a.year || '0');
+         valB = parseInt(b.year || '0');
+      }
+
+      if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+      if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    // 3. Add Ranks (based on Elo regardless of display sort, usually)
+    // Actually, rank should probably reflect the current sort view or always be Elo?
+    // Let's make "Rank" column always be the Elo Rank.
+    // So we need the original Elo map.
+    
+    // Efficient way: Sort full list by Elo first to get true ranks
+    const eloSorted = [...movies].sort((a, b) => b.elo - a.elo);
+    const idToRank = new Map(eloSorted.map((m, i) => [m.id, i + 1]));
+
+    return sorted.map(m => ({
+      ...m,
+      trueRank: idToRank.get(m.id) || 0
+    }));
+
+  }, [movies, searchTerm, sortField, sortDirection]);
 
   const downloadCSV = () => {
     const headers = ['Rank', 'Name', 'Year', 'Rating', 'ELO', 'Matches', 'Wins', 'Losses'];
-    const rows = sortedMovies.map(m => [
-      m.rank,
+    const rows = processedMovies.map(m => [
+      m.trueRank,
       `"${m.name.replace(/"/g, '""')}"`,
       m.year,
       m.rating || '',
@@ -45,6 +90,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ movies, onBack }) => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ArrowUpDown size={14} className="opacity-20" />;
+    return <ArrowUpDown size={14} className={`opacity-100 ${sortDirection === 'asc' ? 'rotate-180' : ''}`} />;
   };
 
   return (
@@ -89,15 +139,43 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ movies, onBack }) => {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-bauhaus-black text-white text-sm uppercase tracking-widest">
-                <th className="p-4 font-bold w-20 text-center">#</th>
-                <th className="p-4 font-bold border-l-2 border-white/20">Film</th>
-                <th className="p-4 font-bold text-right border-l-2 border-white/20 w-32">ELO</th>
-                <th className="p-4 font-bold text-center border-l-2 border-white/20 hidden sm:table-cell">W/L</th>
+              <tr className="bg-bauhaus-black text-white text-sm uppercase tracking-widest cursor-pointer select-none">
+                <th 
+                    className="p-4 font-bold w-20 text-center hover:bg-white/10 transition-colors group"
+                    onClick={() => handleSort('elo')}
+                >
+                    <div className="flex items-center justify-center gap-1">
+                        <Hash size={14} /> <SortIcon field="elo" />
+                    </div>
+                </th>
+                <th 
+                    className="p-4 font-bold border-l-2 border-white/20 hover:bg-white/10 transition-colors"
+                    onClick={() => handleSort('name')}
+                >
+                    <div className="flex items-center gap-2">
+                        FILM <SortIcon field="name" />
+                    </div>
+                </th>
+                <th 
+                    className="p-4 font-bold text-right border-l-2 border-white/20 w-32 hover:bg-white/10 transition-colors"
+                    onClick={() => handleSort('elo')}
+                >
+                    <div className="flex items-center justify-end gap-2">
+                         ELO <SortIcon field="elo" />
+                    </div>
+                </th>
+                <th 
+                    className="p-4 font-bold text-center border-l-2 border-white/20 hidden sm:table-cell hover:bg-white/10 transition-colors"
+                    onClick={() => handleSort('matches')}
+                >
+                    <div className="flex items-center justify-center gap-2">
+                         MATCHES <SortIcon field="matches" />
+                    </div>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {filteredMovies.slice(0, 100).map((movie) => (
+              {processedMovies.slice(0, 100).map((movie) => (
                 <tr 
                   key={movie.id} 
                   className="border-b-2 border-bauhaus-muted hover:bg-bauhaus-yellow/10 transition-colors group"
@@ -105,11 +183,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ movies, onBack }) => {
                   <td className="p-4 text-center">
                     <div className={`
                       font-black text-xl w-10 h-10 flex items-center justify-center mx-auto border-2 border-bauhaus-black shadow-hard-sm
-                      ${movie.rank === 1 ? 'bg-bauhaus-yellow text-bauhaus-black' : 
-                        movie.rank === 2 ? 'bg-gray-300 text-bauhaus-black' : 
-                        movie.rank === 3 ? 'bg-bauhaus-red text-white' : 'bg-white text-bauhaus-black'}
+                      ${movie.trueRank === 1 ? 'bg-bauhaus-yellow text-bauhaus-black' : 
+                        movie.trueRank === 2 ? 'bg-gray-300 text-bauhaus-black' : 
+                        movie.trueRank === 3 ? 'bg-bauhaus-red text-white' : 'bg-white text-bauhaus-black'}
                     `}>
-                      {movie.rank}
+                      {movie.trueRank}
                     </div>
                   </td>
                   <td className="p-4">
@@ -143,7 +221,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ movies, onBack }) => {
           </table>
         </div>
         
-        {filteredMovies.length === 0 && (
+        {processedMovies.length === 0 && (
             <div className="p-12 text-center font-bold uppercase text-gray-400">
                 No films match your search
             </div>

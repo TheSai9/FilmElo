@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Movie, AIAnalysis } from '../types';
 import { updateMovieStats } from '../services/eloCalculator';
 import { getMovieComparisonVibe } from '../services/geminiService';
 import MovieCard from './MovieCard';
 import Button from './Button';
-import { Sparkles, Shuffle, BarChart2 } from 'lucide-react';
+import { Sparkles, Shuffle, BarChart2, Undo2, Keyboard } from 'lucide-react';
 
 interface VotingArenaProps {
   movies: Movie[];
@@ -16,6 +17,9 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
   const [currentPair, setCurrentPair] = useState<[number, number] | null>(null);
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
+  
+  // Undo History: Stores snapshots of the movie list before changes
+  const [history, setHistory] = useState<Movie[][]>([]);
 
   const pickNewPair = useCallback(() => {
     if (movies.length < 2) return;
@@ -46,15 +50,28 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
     if (!currentPair) pickNewPair();
   }, [pickNewPair, currentPair]);
 
-  const handleVote = (winnerIndex: number, loserIndex: number) => {
+  const handleVote = useCallback((winnerIndex: number, loserIndex: number) => {
+    // Save current state to history before modifying
+    setHistory(prev => [...prev.slice(-10), [...movies]]); // Keep last 10 states
+
     const winner = movies[winnerIndex];
     const loser = movies[loserIndex];
     const { winner: newWinner, loser: newLoser } = updateMovieStats(winner, loser);
+    
     const newMovies = [...movies];
     newMovies[winnerIndex] = newWinner;
     newMovies[loserIndex] = newLoser;
+    
     onUpdateMovies(newMovies);
     pickNewPair();
+  }, [movies, onUpdateMovies, pickNewPair]);
+
+  const handleUndo = () => {
+    if (history.length === 0) return;
+    const previousState = history[history.length - 1];
+    setHistory(prev => prev.slice(0, -1));
+    onUpdateMovies(previousState);
+    pickNewPair(); // Re-roll or we could try to restore exact pair, but re-roll is simpler
   };
 
   const fetchAiInsight = async () => {
@@ -66,6 +83,33 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
     if (analysis) setAiAnalysis(analysis);
     setLoadingAi(false);
   };
+
+  // Keyboard Support
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!currentPair) return;
+      
+      switch(e.key) {
+        case 'ArrowLeft':
+          handleVote(currentPair[0], currentPair[1]);
+          break;
+        case 'ArrowRight':
+          handleVote(currentPair[1], currentPair[0]);
+          break;
+        case 'ArrowDown':
+        case ' ':
+          e.preventDefault();
+          pickNewPair();
+          break;
+        case 'Backspace':
+          if (history.length > 0) handleUndo();
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentPair, handleVote, pickNewPair, history]);
 
   if (!currentPair) return (
     <div className="flex items-center justify-center h-[50vh]">
@@ -89,8 +133,13 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
             Construct Your Canon
           </p>
         </div>
-        <div className="flex gap-4">
-           <Button onClick={pickNewPair} variant="outline" title="Skip Pair">
+        <div className="flex flex-wrap gap-4 items-center justify-center">
+            {history.length > 0 && (
+                <Button onClick={handleUndo} variant="outline" title="Undo Last Vote (Backspace)">
+                    <Undo2 size={20} />
+                </Button>
+            )}
+           <Button onClick={pickNewPair} variant="outline" title="Skip Pair (Space)">
              <Shuffle size={20} />
            </Button>
            <Button onClick={onFinish} variant="primary" className="flex items-center gap-2">
@@ -106,6 +155,12 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
           <div className="bg-bauhaus-yellow text-bauhaus-black font-black text-2xl w-20 h-20 flex items-center justify-center border-4 border-bauhaus-black shadow-hard-md rotate-3">
             VS
           </div>
+        </div>
+
+        {/* Keyboard Hints */}
+        <div className="absolute top-0 left-0 w-full flex justify-between pointer-events-none px-4 -mt-8 opacity-40 text-xs font-black uppercase tracking-widest hidden md:flex">
+             <span>[←] Vote Left</span>
+             <span>Vote Right [→]</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-stretch">
@@ -157,6 +212,12 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
           </Button>
         )}
       </div>
+
+        {/* Mobile Keyboard Hint */}
+        <div className="md:hidden text-center mt-6 opacity-50">
+            <Keyboard size={24} className="mx-auto mb-1" />
+            <p className="text-[10px] uppercase font-bold tracking-widest">Desktop supports keyboard controls</p>
+        </div>
     </div>
   );
 };

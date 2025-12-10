@@ -1,5 +1,9 @@
+
 export const INITIAL_ELO = 1200;
 export const K_FACTOR = 32;
+
+// Storage
+export const STORAGE_KEY = 'cinerank_data_v1';
 
 // Gemini Models
 export const GEMINI_FLASH_MODEL = 'gemini-2.5-flash';
