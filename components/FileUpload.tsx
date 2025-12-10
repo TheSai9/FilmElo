@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Upload, FileText, AlertCircle, Film } from 'lucide-react';
+import { Upload, FileText, AlertCircle, Film, Star, Equal } from 'lucide-react';
 import { Movie } from '../types';
 import { INITIAL_ELO } from '../constants';
 import Button from './Button';
@@ -8,12 +8,14 @@ interface FileUploadProps {
   onDataLoaded: (movies: Movie[]) => void;
 }
 
+type EloStrategy = 'fixed' | 'rating';
+
 const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [eloStrategy, setEloStrategy] = useState<EloStrategy>('fixed');
 
-  // ... (CSV Parsing Logic remains identical, omitted for brevity but assumed included in full file content) ...
   const parseCSV = (text: string): Movie[] => {
     const movies: Movie[] = [];
     const rows: string[][] = [];
@@ -78,12 +80,22 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
       const year = columns[yearIndex]?.trim();
       
       if (name && year) {
+        const ratingVal = ratingIndex > -1 ? parseFloat(columns[ratingIndex] || '0') : 0;
+        let initialElo = INITIAL_ELO;
+
+        if (eloStrategy === 'rating' && ratingVal > 0) {
+          // Map 0.5 - 5.0 stars to roughly 700 - 1600 Elo
+          // 3.0 stars = 1200 Elo
+          // 1 star difference = 200 Elo difference
+          initialElo = 1200 + (ratingVal - 3) * 200;
+        }
+
         movies.push({
           id: `${name}-${year}-${i}`,
           name: name,
           year: year,
-          rating: ratingIndex > -1 ? parseFloat(columns[ratingIndex] || '0') : undefined,
-          elo: INITIAL_ELO,
+          rating: ratingVal > 0 ? ratingVal : undefined,
+          elo: initialElo,
           matches: 0,
           wins: 0,
           losses: 0,
@@ -119,7 +131,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFile(e.dataTransfer.files[0]);
     }
-  }, []);
+  }, [eloStrategy]); // Dependency on eloStrategy so the latest value is used
 
   const onDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -132,9 +144,9 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
   }, []);
 
   return (
-    <div className="max-w-2xl mx-auto mt-10 p-6">
+    <div className="max-w-3xl mx-auto mt-8 p-6 pb-20">
       
-      <div className="text-center mb-12 relative">
+      <div className="text-center mb-10 relative">
         {/* Geometric Decor */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 border-4 border-bauhaus-black rotate-45 opacity-10"></div>
         
@@ -144,6 +156,63 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
         <p className="text-lg font-medium text-gray-600 max-w-md mx-auto">
           Upload your Letterboxd history to construct your definitive film hierarchy.
         </p>
+      </div>
+
+      {/* Configuration Section */}
+      <div className="mb-10">
+        <p className="text-center text-sm font-bold uppercase tracking-widest text-bauhaus-black mb-4 flex items-center justify-center gap-2">
+           <span className="w-8 h-1 bg-bauhaus-black"></span>
+           Initialization Strategy
+           <span className="w-8 h-1 bg-bauhaus-black"></span>
+        </p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <button
+            onClick={() => setEloStrategy('fixed')}
+            className={`
+              relative p-6 border-4 text-left transition-all duration-200 group
+              ${eloStrategy === 'fixed' 
+                ? 'border-bauhaus-black bg-bauhaus-black text-white shadow-hard-md translate-x-[2px] translate-y-[2px] shadow-none' 
+                : 'border-bauhaus-black bg-white text-bauhaus-black shadow-hard-sm hover:shadow-hard-md hover:-translate-y-1'}
+            `}
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <Equal size={24} strokeWidth={3} className={eloStrategy === 'fixed' ? 'text-bauhaus-yellow' : 'text-bauhaus-black'} />
+              <span className="font-black uppercase text-xl tracking-tight">Tabula Rasa</span>
+            </div>
+            <p className={`text-sm font-medium ${eloStrategy === 'fixed' ? 'text-gray-300' : 'text-gray-600'}`}>
+              All films start equal (1200). Pure meritocracy based solely on your battles here.
+            </p>
+            {eloStrategy === 'fixed' && (
+              <div className="absolute top-3 right-3 w-3 h-3 bg-bauhaus-yellow rounded-full"></div>
+            )}
+          </button>
+
+          <button
+            onClick={() => setEloStrategy('rating')}
+            className={`
+              relative p-6 border-4 text-left transition-all duration-200 group
+              ${eloStrategy === 'rating' 
+                ? 'border-bauhaus-black bg-bauhaus-blue text-white shadow-hard-md translate-x-[2px] translate-y-[2px] shadow-none' 
+                : 'border-bauhaus-black bg-white text-bauhaus-black shadow-hard-sm hover:shadow-hard-md hover:-translate-y-1'}
+            `}
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <Star size={24} strokeWidth={3} className={eloStrategy === 'rating' ? 'text-bauhaus-yellow' : 'text-bauhaus-black'} />
+              <span className="font-black uppercase text-xl tracking-tight">Star Power</span>
+            </div>
+            <p className={`text-sm font-medium ${eloStrategy === 'rating' ? 'text-blue-200' : 'text-gray-600'}`}>
+              Start based on your Letterboxd ratings.
+              <br/>
+              <span className="text-xs font-mono opacity-80 mt-1 block">
+                0.5★ = 700 ELO ... 5★ = 1600 ELO
+              </span>
+            </p>
+            {eloStrategy === 'rating' && (
+              <div className="absolute top-3 right-3 w-3 h-3 bg-bauhaus-yellow rounded-full"></div>
+            )}
+          </button>
+        </div>
       </div>
 
       <div 
