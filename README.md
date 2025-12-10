@@ -108,6 +108,3 @@ _Sortable, filterable rankings with "hard" Bauhaus styling._
 -   **AI**: Google GenAI SDK (`@google/genai`)
 -   **Data**: LocalStorage persistence
 
----
-
-*Form Follows Function.*
