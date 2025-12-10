@@ -1,4 +1,13 @@
 
+export interface MatchRecord {
+  timestamp: number;
+  opponentId: string;
+  opponentName: string;
+  result: 'WIN' | 'LOSS';
+  eloChange: number;
+  newElo: number;
+}
+
 export interface Movie {
   id: string;
   name: string;
@@ -10,6 +19,7 @@ export interface Movie {
   losses: number;
   uri?: string; // Letterboxd URI
   posterPath?: string; // TMDB Poster Path
+  history: MatchRecord[];
 }
 
 export enum AppView {

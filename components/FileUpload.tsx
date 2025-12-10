@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { Upload, FileText, AlertCircle, Film, Star, Equal } from 'lucide-react';
 import { Movie } from '../types';
@@ -62,7 +63,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
     setLoading(true);
     setError(null);
     
-    const movieMap = new Map<string, Omit<Movie, 'elo' | 'matches' | 'wins' | 'losses'>>();
+    const movieMap = new Map<string, Omit<Movie, 'elo' | 'matches' | 'wins' | 'losses' | 'history'>>();
     let filesProcessed = 0;
     let hasRatings = false;
 
@@ -157,7 +158,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
           elo: initialElo,
           matches: 0,
           wins: 0,
-          losses: 0
+          losses: 0,
+          history: []
         };
       });
 

@@ -4,6 +4,8 @@ import { Movie } from '../types';
 import { Trophy, ArrowLeft, Download, Search, ArrowUpDown, Calendar, Hash, Award, ImageIcon } from 'lucide-react';
 import Button from './Button';
 import { INITIAL_ELO } from '../constants';
+import EloHistogram from './EloHistogram';
+import MovieDetailModal from './MovieDetailModal';
 
 interface LeaderboardProps {
   movies: Movie[];
@@ -17,6 +19,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ movies, onBack }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<SortField>('elo');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -94,8 +97,16 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ movies, onBack }) => {
 
   return (
     <div className="max-w-5xl mx-auto py-8 px-4">
+      {/* Detail Modal */}
+      {selectedMovie && (
+        <MovieDetailModal 
+          movie={selectedMovie} 
+          onClose={() => setSelectedMovie(null)} 
+        />
+      )}
+
       {/* Header */}
-      <div className="bg-bauhaus-blue p-6 md:p-10 text-white border-4 border-bauhaus-black shadow-hard-lg mb-10 relative overflow-hidden">
+      <div className="bg-bauhaus-blue p-6 md:p-10 text-white border-4 border-bauhaus-black shadow-hard-lg mb-8 relative overflow-hidden">
         {/* Abstract Background Shapes */}
         <div className="absolute -right-10 -top-10 w-40 h-40 bg-bauhaus-red rounded-full border-4 border-bauhaus-black opacity-50"></div>
         <div className="absolute right-20 -bottom-10 w-20 h-20 bg-bauhaus-yellow rotate-45 border-4 border-bauhaus-black opacity-50"></div>
@@ -128,6 +139,9 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ movies, onBack }) => {
             </div>
         </div>
       </div>
+      
+      {/* Overall Stats Graph */}
+      <EloHistogram movies={movies} />
 
       {/* Table Container */}
       <div className="bg-white border-4 border-bauhaus-black shadow-hard-lg">
@@ -173,7 +187,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ movies, onBack }) => {
               {processedMovies.slice(0, 100).map((movie) => (
                 <tr 
                   key={movie.id} 
-                  className="border-b-2 border-bauhaus-muted hover:bg-bauhaus-yellow/10 transition-colors group"
+                  className="border-b-2 border-bauhaus-muted hover:bg-bauhaus-yellow/20 transition-colors group cursor-pointer"
+                  onClick={() => setSelectedMovie(movie)}
                 >
                   <td className="p-4 text-center">
                     <div className={`
@@ -201,9 +216,14 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ movies, onBack }) => {
                         <span className="font-bold text-lg text-bauhaus-black uppercase tracking-tight group-hover:text-bauhaus-blue transition-colors">
                           {movie.name}
                         </span>
-                        <span className="text-xs font-mono text-gray-500 bg-gray-100 w-fit px-1 rounded-sm mt-1 border border-gray-300">
-                          {movie.year}
-                        </span>
+                        <div className="flex gap-2 items-center mt-1">
+                             <span className="text-xs font-mono text-gray-500 bg-gray-100 px-1 border border-gray-300">
+                                {movie.year}
+                             </span>
+                             <span className="text-[10px] uppercase font-bold text-bauhaus-blue opacity-0 group-hover:opacity-100 transition-opacity">
+                                View Details
+                             </span>
+                        </div>
                       </div>
                     </div>
                   </td>
