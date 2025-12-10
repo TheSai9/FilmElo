@@ -1,20 +1,117 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# CineRank Elo - Bauhaus Edition
 
-# Run and deploy your AI Studio app
+**CineRank Elo** is a visual movie ranking application that transforms your Letterboxd history into a definitive hierarchy using the **Elo rating system**. 
 
-This contains everything you need to run your app locally.
+Built with a bold **Bauhaus Design System**, it rejects generic web aesthetics in favor of constructivist geometry, primary colors, and functional art.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1UkPqRa2ctqwWSicHMTf2Mkm-Wlf1o_qL
+![CineRank Hero Image](https://placehold.co/1200x600/F0F0F0/121212?text=CineRank+Bauhaus)
 
-## Run Locally
+## 🎨 Design Philosophy: Form Follows Function
 
-**Prerequisites:**  Node.js
+This project implements a strict **Bauhaus Design System**:
+-   **Geometric Purity**: All UI elements are constructed from circles, squares, and triangles.
+-   **Primary Palette**: Strictly uses `#D02020` (Red), `#1040C0` (Blue), `#F0C020` (Yellow), and Stark Black `#121212`.
+-   **Hard Shadows**: No soft blurs. Shadows are hard, offset blocks that create depth through layering.
+-   **Constructivist Typography**: Massive, uppercase sans-serif headings (**Outfit** font) with tight tracking.
 
+## ✨ Key Features
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### 1. 📊 Intelligent Data Import
+-   **Letterboxd Support**: Drag & drop your `watched.csv` and `ratings.csv`.
+-   **Strategy Selection**:
+    -   **Tabula Rasa**: Start all movies at 1200 Elo.
+    -   **Star Power**: Initialize Elo based on your existing 0.5-5.0 star ratings (giving favorites a head start).
+-   **Smart Merging**: Deduplicates entries and prioritizes rated content.
+
+### 2. ⚔️ The Voting Arena
+Compare films in a 1v1 "Face Off" using a Tinder-style decision engine.
+-   **Elo Algorithm**: Uses K-Factor 32 for dynamic rating adjustments.
+-   **Generative Art**: If posters fail to load, the app generates unique geometric Bauhaus compositions deterministically based on the movie ID.
+-   **TMDB Integration**: Automatically fetches high-res movie posters via The Movie Database API.
+-   **Undo Capability**: Made a mistake? Press `Backspace` or the Undo button to revert the last duel.
+
+### 3. 🧠 AI Vibe Check
+Powered by **Google Gemini 2.5 Flash**:
+-   Stuck on a tough choice? Click "Ask AI".
+-   Get a generated "Vibe Check" comparing the two films.
+-   Receives detailed analysis on strengths and a final recommendation.
+
+### 4. 🏆 Live Leaderboard
+-   **Real-time Ranking**: Watch movies climb or fall as you vote.
+-   **Sorting & Filtering**: Sort by Elo, Name, Year, or Match Count. Search instantly.
+-   **Export**: Download your re-ranked list as a CSV.
+-   **Visuals**: Rank badges and thumbnails in a high-contrast data grid.
+
+## ⌨️ Keyboard Shortcuts
+
+Speed up your ranking process with keyboard controls:
+
+| Key | Action |
+| :--- | :--- |
+| **← Left Arrow** | Vote for Left Movie |
+| **→ Right Arrow** | Vote for Right Movie |
+| **Space** / **↓ Down** | Skip Pair |
+| **Backspace** | Undo Last Vote |
+
+## 🚀 Getting Started
+
+### Prerequisites
+-   Node.js installed
+-   A Letterboxd account (to export your data)
+-   (Optional) Google Gemini API Key
+-   (Optional) TMDB API Key
+
+### Installation
+
+1.  **Clone the repository**
+    ```bash
+    git clone https://github.com/yourusername/cinerank-elo.git
+    cd cinerank-elo
+    ```
+
+2.  **Install dependencies**
+    ```bash
+    npm install
+    ```
+
+3.  **Environment Setup**
+    Create a `.env` file in the root:
+    ```env
+    # Optional: For AI Features
+    API_KEY=your_gemini_api_key
+    
+    # Optional: For Posters (Defaults provided for demo)
+    TMDB_API_KEY=your_tmdb_key
+    TMDB_READ_TOKEN=your_tmdb_read_token
+    ```
+
+4.  **Run the App**
+    ```bash
+    npm start
+    ```
+
+## 📸 Screenshots
+
+### File Upload & Configuration
+_Choose your starting strategy with a tactile, geometric interface._
+![Upload Screen](https://placehold.co/800x450/F0F0F0/121212?text=Upload+Interface)
+
+### 1v1 Arena
+_High-contrast voting cards with generated art and fetched posters._
+![Voting Arena](https://placehold.co/800x450/F0F0F0/121212?text=Voting+Arena)
+
+### Leaderboard
+_Sortable, filterable rankings with "hard" Bauhaus styling._
+![Leaderboard](https://placehold.co/800x450/F0F0F0/121212?text=Leaderboard)
+
+## 🛠️ Tech Stack
+
+-   **Frontend**: React 19, TypeScript
+-   **Styling**: Tailwind CSS (Custom Config)
+-   **Icons**: Lucide React
+-   **AI**: Google GenAI SDK (`@google/genai`)
+-   **Data**: LocalStorage persistence
+
+---
+
+*Form Follows Function.*
