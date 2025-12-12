@@ -1,17 +1,20 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Movie } from '../types';
-import { Star, TrendingUp, Trophy } from 'lucide-react';
+import { Star, TrendingUp, Trophy, TrendingDown } from 'lucide-react';
+
+export interface Feedback {
+  type: 'WIN' | 'LOSS';
+  diff: number;
+}
 
 interface MovieCardProps {
   movie: Movie;
   onClick: () => void;
   aiData?: { vibe: string; strengths: string[] };
-  isWinning?: boolean;
+  feedback?: Feedback | null;
 }
 
-const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, aiData }) => {
-  const [imageLoaded, setImageLoaded] = useState(false);
-
+const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, aiData, feedback }) => {
   // Deterministic "Art" Generation based on ID
   const seed = parseInt(movie.id.split('-').pop() || '0') + movie.name.length;
   
@@ -19,7 +22,6 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, aiData }) => {
   const colors = ['#D02020', '#1040C0', '#F0C020', '#121212', '#FFFFFF'];
   const bgColors = ['#D02020', '#1040C0', '#F0C020']; // Red, Blue, Yellow backgrounds
   
-  const getRand = (mod: number) => (seed * 137) % mod;
   const bgColor = bgColors[seed % bgColors.length];
   
   // Generate 3 decorative shapes
@@ -37,8 +39,30 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, aiData }) => {
   return (
     <div 
       onClick={onClick}
-      className="group relative w-full cursor-pointer bg-white border-4 border-bauhaus-black shadow-hard-lg hover:shadow-hard-xl hover:-translate-y-2 transition-all duration-200 flex flex-col h-full overflow-hidden"
+      className="group relative w-full cursor-pointer bg-white border-4 border-bauhaus-black shadow-hard-lg hover:shadow-hard-xl hover:-translate-y-2 transition-all duration-300 flex flex-col h-full overflow-hidden"
     >
+      {/* Feedback Overlays - Inside the transformed container to track hover state */}
+      {feedback?.type === 'WIN' && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none bg-green-500/10 backdrop-blur-[2px] border-4 border-green-500 animate-slide-up">
+            <div className="text-center">
+            <span className="text-6xl font-black text-green-600 drop-shadow-md block mb-4">WIN</span>
+            <div className="inline-flex items-center justify-center text-green-700 font-bold text-3xl bg-white px-6 py-3 border-4 border-green-700 shadow-hard-md">
+                <TrendingUp size={28} className="mr-3"/> +{Math.round(feedback.diff)}
+            </div>
+            </div>
+        </div>
+      )}
+      
+      {feedback?.type === 'LOSS' && (
+         <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none bg-red-500/10 backdrop-blur-[2px] border-4 border-red-500 animate-slide-up">
+             <div className="text-center">
+                <div className="inline-flex items-center justify-center text-red-700 font-bold text-3xl bg-white px-6 py-3 border-4 border-red-700 shadow-hard-md">
+                    <TrendingDown size={28} className="mr-3"/> {Math.round(feedback.diff)}
+                </div>
+             </div>
+         </div>
+      )}
+
       {/* 1. Poster / Art Area (Top 2/3) */}
       <div 
         className="relative h-64 md:h-80 w-full overflow-hidden border-b-4 border-bauhaus-black bg-gray-100"
@@ -77,12 +101,8 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, aiData }) => {
           <img 
             src={movie.posterPath} 
             alt={`Poster for ${movie.name}`}
-            className={`
-              absolute inset-0 w-full h-full object-cover transition-all duration-300
-              grayscale group-hover:grayscale-0
-              ${imageLoaded ? 'opacity-100' : 'opacity-0'}
-            `}
-            onLoad={() => setImageLoaded(true)}
+            className="absolute inset-0 w-full h-full object-cover"
+            loading="eager"
           />
         )}
         

@@ -111,7 +111,7 @@ _Deep dive into a film's performance history._
 ![Advanced Stats](https://github.com/user-attachments/assets/stats-modal-placeholder)
 
 ### Meta Insights Leaderboard
-_Discover global trends and outliers._
+_Discover trends and outliers._
 
 ![Meta Leaderboard](https://github.com/user-attachments/assets/meta-leaderboard-placeholder)
 

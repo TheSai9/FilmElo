@@ -38,12 +38,37 @@
               '4': '4px',
             },
             animation: {
-              'slide-up': 'slideUp 0.2s ease-out forwards',
+              'slide-up': 'slideUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both',
+              'slide-in-left': 'slideInLeft 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both',
+              'slide-in-right': 'slideInRight 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both',
+              'slide-out-left': 'slideOutLeft 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both',
+              'slide-out-right': 'slideOutRight 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both',
+              'fade-in': 'fadeIn 0.4s ease-out both',
             },
             keyframes: {
               slideUp: {
-                '0%': { transform: 'translateY(10px)', opacity: '0' },
+                '0%': { transform: 'translateY(20px)', opacity: '0' },
                 '100%': { transform: 'translateY(0)', opacity: '1' },
+              },
+              slideInLeft: {
+                '0%': { transform: 'translateX(-40px)', opacity: '0' },
+                '100%': { transform: 'translateX(0)', opacity: '1' },
+              },
+              slideInRight: {
+                '0%': { transform: 'translateX(40px)', opacity: '0' },
+                '100%': { transform: 'translateX(0)', opacity: '1' },
+              },
+              slideOutLeft: {
+                '0%': { transform: 'translateX(0)', opacity: '1' },
+                '100%': { transform: 'translateX(-40px)', opacity: '0' },
+              },
+              slideOutRight: {
+                '0%': { transform: 'translateX(0)', opacity: '1' },
+                '100%': { transform: 'translateX(40px)', opacity: '0' },
+              },
+              fadeIn: {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
               }
             }
           }
@@ -57,6 +82,7 @@
         /* Dot grid pattern */
         background-image: radial-gradient(#121212 1px, transparent 1px);
         background-size: 24px 24px;
+        overflow-x: hidden; /* Prevent horiz scroll during animations */
       }
       /* Custom scrollbar */
       ::-webkit-scrollbar {
