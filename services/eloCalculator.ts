@@ -39,7 +39,8 @@ export const updateMovieStats = (winner: Movie, loser: Movie): { winner: Movie; 
     opponentName: loser.name,
     result: 'WIN',
     eloChange: winnerDiff,
-    newElo: newWinnerElo
+    newElo: newWinnerElo,
+    opponentElo: loser.elo
   };
 
   const loserRecord: MatchRecord = {
@@ -48,7 +49,8 @@ export const updateMovieStats = (winner: Movie, loser: Movie): { winner: Movie; 
     opponentName: winner.name,
     result: 'LOSS',
     eloChange: loserDiff,
-    newElo: newLoserElo
+    newElo: newLoserElo,
+    opponentElo: winner.elo
   };
 
   const updatedWinner: Movie = {

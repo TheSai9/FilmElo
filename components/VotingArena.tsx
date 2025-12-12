@@ -5,7 +5,7 @@ import { getMovieComparisonVibe } from '../services/geminiService';
 import { fetchMoviePoster } from '../services/tmdbService';
 import MovieCard from './MovieCard';
 import Button from './Button';
-import { Sparkles, Shuffle, BarChart2, Undo2, Keyboard } from 'lucide-react';
+import { Sparkles, Shuffle, BarChart2, Undo2, Keyboard, TrendingUp, TrendingDown } from 'lucide-react';
 
 interface VotingArenaProps {
   movies: Movie[];
@@ -16,11 +16,22 @@ interface VotingArenaProps {
 
 const QUEUE_SIZE = 5;
 
+// Animation States
+type VoteResult = {
+  winnerId: string;
+  loserId: string;
+  winnerDiff: number;
+  loserDiff: number;
+};
+
 const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFinish }) => {
   const [currentPair, setCurrentPair] = useState<[number, number] | null>(null);
   const [matchupQueue, setMatchupQueue] = useState<[number, number][]>([]);
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
+  
+  // Animation State
+  const [voteResult, setVoteResult] = useState<VoteResult | null>(null);
   
   // Undo History: Stores snapshots of the movie list before changes
   const [history, setHistory] = useState<Movie[][]>([]);
@@ -86,7 +97,7 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
       }
       return newQueue;
     });
-  }, [movies, generatePair]); // Re-runs when movies update (stats change), keeping pairings fresh based on new Elo
+  }, [movies, generatePair]); 
 
   // Effect: Initialize First Pair if empty
   useEffect(() => {
@@ -137,10 +148,7 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
             });
           }
         }).finally(() => {
-          // Whether success or fail (null), we remove from fetching so we might retry later or ignore
-          // Currently we won't retry immediately to avoid loops, as !posterPath condition would trigger again.
-          // In a real app we might mark as 'failed' to stop retries. 
-          // For now, the fetchingIds set prevents loop in this session.
+          fetchingIds.current.delete(movie.id);
         });
       }
     });
@@ -155,14 +163,18 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
       setCurrentPair(next);
       setMatchupQueue(prev => prev.slice(1));
       setAiAnalysis(null);
+      setVoteResult(null); // Clear animation state
     } else {
       // Emergency generation if queue empty
       setCurrentPair(generatePair(movies));
       setAiAnalysis(null);
+      setVoteResult(null);
     }
   }, [matchupQueue, movies, generatePair]);
 
   const handleVote = useCallback((winnerIndex: number, loserIndex: number) => {
+    if (voteResult) return; // Prevent double clicks during animation
+
     // Save history
     setHistory(prev => [...prev.slice(-10), [...movies]]);
 
@@ -170,24 +182,36 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
     const loser = movies[loserIndex];
     const { winner: newWinner, loser: newLoser } = updateMovieStats(winner, loser);
     
-    // Update movies with new stats
-    onUpdateMovies(prevMovies => {
-      const newMovies = [...prevMovies];
-      newMovies[winnerIndex] = newWinner;
-      newMovies[loserIndex] = newLoser;
-      return newMovies;
-    });
+    // 1. Trigger Animation
+    const winnerDiff = newWinner.elo - winner.elo;
+    const loserDiff = newLoser.elo - loser.elo;
     
-    advanceQueue();
-  }, [movies, onUpdateMovies, advanceQueue]);
+    setVoteResult({
+      winnerId: winner.id,
+      loserId: loser.id,
+      winnerDiff,
+      loserDiff
+    });
+
+    // 2. Delayed State Update (wait for animation)
+    setTimeout(() => {
+        onUpdateMovies(prevMovies => {
+          const newMovies = [...prevMovies];
+          newMovies[winnerIndex] = newWinner;
+          newMovies[loserIndex] = newLoser;
+          return newMovies;
+        });
+        
+        advanceQueue();
+    }, 800); // 800ms animation duration
+
+  }, [movies, onUpdateMovies, advanceQueue, voteResult]);
 
   const handleUndo = () => {
     if (history.length === 0) return;
     const previousState = history[history.length - 1];
     setHistory(prev => prev.slice(0, -1));
     onUpdateMovies(previousState);
-    // Note: We don't strictly restore the exact previous pair, we just generate a new one or grab from queue
-    // This feels more "forward moving" while undoing the stat change.
     advanceQueue(); 
   };
 
@@ -204,7 +228,7 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
   // Keyboard Support
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!currentPair) return;
+      if (!currentPair || voteResult) return; // Disable keys during animation
       
       switch(e.key) {
         case 'ArrowLeft':
@@ -226,7 +250,7 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentPair, handleVote, advanceQueue, history]);
+  }, [currentPair, handleVote, advanceQueue, history, voteResult]);
 
   if (!currentPair) return (
     <div className="flex items-center justify-center h-[50vh]">
@@ -252,11 +276,11 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
         </div>
         <div className="flex flex-wrap gap-4 items-center justify-center">
             {history.length > 0 && (
-                <Button onClick={handleUndo} variant="outline" title="Undo Last Vote (Backspace)">
+                <Button onClick={handleUndo} variant="outline" title="Undo Last Vote (Backspace)" disabled={!!voteResult}>
                     <Undo2 size={20} />
                 </Button>
             )}
-           <Button onClick={advanceQueue} variant="outline" title="Skip Pair (Space)">
+           <Button onClick={advanceQueue} variant="outline" title="Skip Pair (Space)" disabled={!!voteResult}>
              <Shuffle size={20} />
            </Button>
            <Button onClick={onFinish} variant="primary" className="flex items-center gap-2">
@@ -268,7 +292,7 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
       {/* Arena Grid */}
       <div className="flex-1 relative">
         {/* VS Badge - Geometric Centerpiece */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none hidden md:flex">
+        <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none hidden md:flex transition-opacity duration-300 ${voteResult ? 'opacity-0' : 'opacity-100'}`}>
           <div className="bg-bauhaus-yellow text-bauhaus-black font-black text-2xl w-20 h-20 flex items-center justify-center border-4 border-bauhaus-black shadow-hard-md rotate-3">
             VS
           </div>
@@ -281,22 +305,64 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-stretch">
-            <MovieCard 
-              movie={m1} 
-              onClick={() => handleVote(currentPair[0], currentPair[1])} 
-              aiData={aiAnalysis?.movie1}
-            />
+            <div className="relative">
+                {voteResult?.winnerId === m1.id && (
+                     <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none bg-green-500/10 backdrop-blur-[2px] border-4 border-green-500 animate-slide-up">
+                         <div className="text-center">
+                            <span className="text-6xl font-black text-green-600 drop-shadow-md">WIN</span>
+                            <div className="flex items-center justify-center text-green-700 font-bold text-3xl mt-2 bg-white px-4 py-1 border-2 border-green-700 shadow-hard-sm">
+                                <TrendingUp size={24} className="mr-2"/> +{Math.round(voteResult.winnerDiff)}
+                            </div>
+                         </div>
+                     </div>
+                )}
+                {voteResult?.loserId === m1.id && (
+                     <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none bg-red-500/10 backdrop-blur-[2px] border-4 border-red-500 animate-slide-up">
+                        <div className="text-center">
+                            <div className="flex items-center justify-center text-red-700 font-bold text-3xl mt-2 bg-white px-4 py-1 border-2 border-red-700 shadow-hard-sm">
+                                <TrendingDown size={24} className="mr-2"/> {Math.round(voteResult.loserDiff)}
+                            </div>
+                        </div>
+                     </div>
+                )}
+                <MovieCard 
+                  movie={m1} 
+                  onClick={() => handleVote(currentPair[0], currentPair[1])} 
+                  aiData={aiAnalysis?.movie1}
+                />
+            </div>
             
             {/* Mobile VS Badge */}
             <div className="md:hidden flex justify-center -my-4 z-10">
                <div className="bg-bauhaus-yellow text-bauhaus-black font-black text-xl w-14 h-14 flex items-center justify-center border-4 border-bauhaus-black shadow-hard-sm">VS</div>
             </div>
 
-            <MovieCard 
-              movie={m2} 
-              onClick={() => handleVote(currentPair[1], currentPair[0])} 
-              aiData={aiAnalysis?.movie2}
-            />
+            <div className="relative">
+                {voteResult?.winnerId === m2.id && (
+                     <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none bg-green-500/10 backdrop-blur-[2px] border-4 border-green-500 animate-slide-up">
+                         <div className="text-center">
+                            <span className="text-6xl font-black text-green-600 drop-shadow-md">WIN</span>
+                            <div className="flex items-center justify-center text-green-700 font-bold text-3xl mt-2 bg-white px-4 py-1 border-2 border-green-700 shadow-hard-sm">
+                                <TrendingUp size={24} className="mr-2"/> +{Math.round(voteResult.winnerDiff)}
+                            </div>
+                         </div>
+                     </div>
+                )}
+                {voteResult?.loserId === m2.id && (
+                     <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none bg-red-500/10 backdrop-blur-[2px] border-4 border-red-500 animate-slide-up">
+                         <div className="text-center">
+                            <div className="flex items-center justify-center text-red-700 font-bold text-3xl mt-2 bg-white px-4 py-1 border-2 border-red-700 shadow-hard-sm">
+                                <TrendingDown size={24} className="mr-2"/> {Math.round(voteResult.loserDiff)}
+                            </div>
+                         </div>
+                     </div>
+                )}
+                <MovieCard 
+                  movie={m2} 
+                  onClick={() => handleVote(currentPair[1], currentPair[0])} 
+                  aiData={aiAnalysis?.movie2}
+                />
+            </div>
         </div>
       </div>
 
@@ -315,7 +381,7 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
         ) : (
           <Button 
             onClick={fetchAiInsight} 
-            disabled={loadingAi}
+            disabled={loadingAi || !!voteResult}
             variant="yellow"
             className="flex items-center gap-2 px-8 py-4 text-base"
           >

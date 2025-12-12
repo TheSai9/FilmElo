@@ -6,6 +6,7 @@ export interface MatchRecord {
   result: 'WIN' | 'LOSS';
   eloChange: number;
   newElo: number;
+  opponentElo?: number; // Snapshot of opponent's Elo at match time
 }
 
 export interface Movie {
