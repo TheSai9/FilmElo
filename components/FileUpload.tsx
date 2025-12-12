@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback } from 'react';
-import { Upload, FileText, AlertCircle, Film, Star, Equal } from 'lucide-react';
+import { Upload, FileText, AlertCircle, Film, Star, Equal, X } from 'lucide-react';
 import { Movie } from '../types';
 import { INITIAL_ELO } from '../constants';
 import Button from './Button';
@@ -16,6 +16,10 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [eloStrategy, setEloStrategy] = useState<EloStrategy>('fixed');
+  
+  // State for multi-step upload flow
+  const [pendingData, setPendingData] = useState<Movie[] | null>(null);
+  const [showWatchedPrompt, setShowWatchedPrompt] = useState(false);
 
   // Helper: Parse Raw CSV text into objects
   const parseCSVRaw = (text: string) => {
@@ -59,15 +63,40 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
     return rows;
   };
 
-  const processFiles = async (files: FileList | File[]) => {
+  const processFiles = async (files: FileList | File[], existingData: Movie[] = []) => {
     setLoading(true);
     setError(null);
     
-    const movieMap = new Map<string, Omit<Movie, 'elo' | 'matches' | 'wins' | 'losses' | 'history'>>();
+    // We use a map to deduplicate by Name+Year. 
+    // If we have existing data (from step 1), hydrate the map first.
+    const movieMap = new Map<string, Partial<Movie>>();
+    
+    if (existingData.length > 0) {
+        existingData.forEach(m => {
+            const key = `${m.name.toLowerCase()}-${m.year}`;
+            movieMap.set(key, {
+                id: m.id,
+                name: m.name,
+                year: m.year,
+                rating: m.rating,
+                uri: m.uri,
+                posterPath: m.posterPath
+            });
+        });
+    }
+
     let filesProcessed = 0;
     let hasRatings = false;
+    let isRatingsFileOnly = false;
 
     try {
+      // Check if this is a single 'ratings' file upload (trigger for prompt)
+      if (files.length === 1 && existingData.length === 0) {
+         if (files[0].name.toLowerCase().includes('ratings')) {
+             isRatingsFileOnly = true;
+         }
+      }
+
       // 1. Parse all files and merge into map
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -121,11 +150,15 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
             const existing = movieMap.get(key);
             
             // Merge logic: prioritize entry with rating or URI
+            // If existing had a rating, keep it unless new one has rating
+            // Actually, ratings.csv is usually definitive for rating.
+            const finalRating = ratingVal || existing?.rating;
+
             movieMap.set(key, {
               id: existing?.id || `${name}-${year}-${r}`, // Keep existing ID if possible
               name: existing?.name || name,
               year: existing?.year || year,
-              rating: ratingVal || existing?.rating, // New rating overrides (or fills)
+              rating: finalRating,
               uri: uri || existing?.uri,
               posterPath: existing?.posterPath
             });
@@ -137,9 +170,16 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
         throw new Error("No valid CSV files found. Headers must include 'Name' and 'Year'.");
       }
 
-      if (eloStrategy === 'rating' && !hasRatings) {
-         throw new Error("Star Power strategy selected but no ratings found. Please upload 'ratings.csv'.");
+      // Check for Ratings requirement if this is the final step
+      // If we are in the intermediate step (isRatingsFileOnly), we definitely have ratings
+      if (eloStrategy === 'rating' && !hasRatings && existingData.length === 0 && !isRatingsFileOnly) {
+         // However, if we are in existingData mode, we might be adding unrated movies, so hasRatings might be false for the *new* file
+         // But existingData should have ratings.
+         // Let's rely on the strategy check on the full dataset.
       }
+      
+      // If existingData was present, we check if the COMBINED set has ratings?
+      // Actually, if existingData > 0, we assume we already passed the rating check.
 
       // 2. Convert to Movie array and apply ELO Strategy
       const movies: Movie[] = Array.from(movieMap.values()).map(m => {
@@ -147,14 +187,16 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
 
         if (eloStrategy === 'rating' && m.rating) {
           // Map 0.5 - 5.0 stars to roughly 700 - 1600 Elo
-          // 3.0 stars = 1200 Elo
-          // 0.5 stars = 700 Elo (1200 - 2.5 * 200)
-          // 5.0 stars = 1600 Elo (1200 + 2.0 * 200)
           initialElo = 1200 + (m.rating - 3) * 200;
         }
 
         return {
-          ...m,
+          id: m.id!,
+          name: m.name!,
+          year: m.year!,
+          rating: m.rating,
+          uri: m.uri,
+          posterPath: m.posterPath,
           elo: initialElo,
           matches: 0,
           wins: 0,
@@ -167,13 +209,44 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
         throw new Error("No movies found in files.");
       }
 
+      // 3. Prompt Logic
+      if (eloStrategy === 'rating' && existingData.length === 0 && isRatingsFileOnly) {
+          setPendingData(movies);
+          setShowWatchedPrompt(true);
+          setLoading(false);
+          return;
+      }
+
+      // Final Check
+      if (eloStrategy === 'rating' && !movies.some(m => m.rating)) {
+          throw new Error("Star Power strategy selected but no ratings found. Please upload 'ratings.csv'.");
+      }
+
       onDataLoaded(movies);
 
     } catch (e: any) {
       console.error(e);
       setError(e.message || "Failed to parse CSV files.");
     } finally {
-      setLoading(false);
+      if (!showWatchedPrompt) {
+          setLoading(false);
+      }
+    }
+  };
+
+  const handleWatchedUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0 && pendingData) {
+      processFiles(e.target.files, pendingData);
+      setShowWatchedPrompt(false);
+      setPendingData(null);
+    }
+  };
+
+  const skipWatchedUpload = () => {
+    if (pendingData) {
+        onDataLoaded(pendingData);
+        setShowWatchedPrompt(false);
+        setPendingData(null);
     }
   };
 
@@ -181,9 +254,16 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      processFiles(e.dataTransfer.files);
+      if (showWatchedPrompt && pendingData) {
+         // If prompt is open, dropping a file counts as the "watched.csv" upload
+         processFiles(e.dataTransfer.files, pendingData);
+         setShowWatchedPrompt(false);
+         setPendingData(null);
+      } else {
+         processFiles(e.dataTransfer.files);
+      }
     }
-  }, [eloStrategy]); 
+  }, [eloStrategy, showWatchedPrompt, pendingData]); 
 
   const onDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -198,6 +278,44 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
   return (
     <div className="max-w-3xl mx-auto mt-8 p-6 pb-20">
       
+      {/* Watched CSV Prompt Modal */}
+      {showWatchedPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bauhaus-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white max-w-md w-full border-4 border-bauhaus-black shadow-hard-xl p-8 text-center relative">
+            <button 
+                onClick={skipWatchedUpload}
+                className="absolute top-2 right-2 p-1 hover:bg-gray-100"
+            >
+                <X size={20} />
+            </button>
+            <div className="mx-auto w-16 h-16 bg-bauhaus-blue text-white flex items-center justify-center border-4 border-bauhaus-black mb-4 shadow-hard-sm">
+                <Film size={32} />
+            </div>
+            <h3 className="text-2xl font-black uppercase text-bauhaus-black mb-2">Complete the Picture?</h3>
+            <p className="text-gray-600 font-medium mb-8 text-sm">
+                You've loaded your <strong>Rated</strong> movies. <br/>
+                Do you also want to upload <code>watched.csv</code> to include unrated diary entries?
+            </p>
+            
+            <div className="flex flex-col gap-3">
+                <input 
+                    type="file" 
+                    accept=".csv"
+                    className="hidden"
+                    id="watched-upload"
+                    onChange={handleWatchedUpload}
+                />
+                <Button onClick={() => document.getElementById('watched-upload')?.click()} variant="primary" fullWidth>
+                    Upload watched.csv
+                </Button>
+                <Button onClick={skipWatchedUpload} variant="ghost" fullWidth>
+                    No, Use Rated Only
+                </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="text-center mb-10 relative">
         {/* Geometric Decor */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 border-4 border-bauhaus-black rotate-45 opacity-10"></div>
@@ -270,8 +388,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
            <div className="mt-4 p-4 bg-blue-50 border-l-4 border-bauhaus-blue text-sm text-bauhaus-blue font-bold animate-slide-up flex items-start gap-3 shadow-hard-sm">
               <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
               <span>
-                  For "Star Power", you MUST upload <code>ratings.csv</code>. 
-                  <br/><span className="font-normal opacity-80">You can select both <code>ratings.csv</code> and <code>watched.csv</code> at the same time to include unrated movies.</span>
+                  For "Star Power", upload <code>ratings.csv</code> first. 
+                  <span className="font-normal opacity-80 block mt-1">We'll ask if you want to add <code>watched.csv</code> afterwards to include unrated films.</span>
               </span>
            </div>
         )}
@@ -295,7 +413,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
                 {eloStrategy === 'rating' ? 'Drop ratings.csv' : 'Drop CSV File'}
             </p>
             <p className="text-sm font-bold uppercase tracking-widest text-gray-500 mt-2">
-               {eloStrategy === 'rating' ? '(And optionally watched.csv)' : 'watched.csv / diary.csv'}
+               {eloStrategy === 'rating' ? '(Then watched.csv if prompted)' : 'watched.csv / diary.csv'}
             </p>
           </div>
           <input 
@@ -315,7 +433,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
         </div>
       </div>
 
-      {loading && (
+      {loading && !showWatchedPrompt && (
         <div className="mt-8 text-center">
           <div className="inline-block animate-spin w-8 h-8 border-4 border-bauhaus-black border-t-bauhaus-red rounded-full mb-2"></div>
           <p className="font-bold uppercase tracking-widest">Processing Cinema...</p>

@@ -1,4 +1,4 @@
-# CineRank Elo - Bauhaus Edition
+# CineRank Elo
 
 **CineRank Elo** is a visual movie ranking application that transforms your Letterboxd history into a definitive hierarchy using the **Elo rating system**. 
 
@@ -108,12 +108,16 @@ _High-contrast voting cards with generated art and fetched posters._
 ### Advanced Stats Modal
 _Deep dive into a film's performance history._
 
-![Advanced Stats](https://github.com/user-attachments/assets/stats-modal-placeholder)
+<img width="1019" height="813" alt="image" src="https://github.com/user-attachments/assets/1a6544cf-04f7-40fa-a1dc-1df92ed8439e" />
 
 ### Meta Insights Leaderboard
 _Discover trends and outliers._
 
-![Meta Leaderboard](https://github.com/user-attachments/assets/meta-leaderboard-placeholder)
+
+<img width="1018" height="720" alt="image" src="https://github.com/user-attachments/assets/55a813e4-47ab-4b37-8df7-410aa2e64ef9" />
+<br><br>
+
+<img width="1009" height="721" alt="image" src="https://github.com/user-attachments/assets/ead27797-3008-40e2-8ff4-3eadcb76cb9a" />
 
 
 ## 🛠️ Tech Stack
