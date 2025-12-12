@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Movie, AIAnalysis } from '../types';
 import { updateMovieStats } from '../services/eloCalculator';
@@ -10,107 +9,186 @@ import { Sparkles, Shuffle, BarChart2, Undo2, Keyboard } from 'lucide-react';
 
 interface VotingArenaProps {
   movies: Movie[];
-  onUpdateMovies: (movies: Movie[]) => void;
+  // Updated type to allow functional state updates for background processing
+  onUpdateMovies: React.Dispatch<React.SetStateAction<Movie[]>>;
   onFinish: () => void;
 }
 
+const QUEUE_SIZE = 5;
+
 const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFinish }) => {
   const [currentPair, setCurrentPair] = useState<[number, number] | null>(null);
+  const [matchupQueue, setMatchupQueue] = useState<[number, number][]>([]);
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
   
   // Undo History: Stores snapshots of the movie list before changes
   const [history, setHistory] = useState<Movie[][]>([]);
+  
+  // Track fetching IDs to prevent duplicate requests in the background
+  const fetchingIds = useRef<Set<string>>(new Set());
 
-  const pickNewPair = useCallback(() => {
-    if (movies.length < 2) return;
+  // --- Matchup Generation Logic ---
+
+  const generatePair = useCallback((currentMovies: Movie[]): [number, number] => {
+    if (currentMovies.length < 2) return [0, 0];
     
-    let idx1 = Math.floor(Math.random() * movies.length);
-    let idx2 = Math.floor(Math.random() * movies.length);
+    let idx1 = Math.floor(Math.random() * currentMovies.length);
+    let idx2 = Math.floor(Math.random() * currentMovies.length);
     
-    const useSmartPairing = Math.random() > 0.6; // 60% chance smart pairing
+    // 60% chance smart pairing (match similar Elos)
+    const useSmartPairing = Math.random() > 0.6;
+    
     if (useSmartPairing) {
-        const targetElo = movies[idx1].elo;
-        const candidates = movies.map((m, i) => ({ idx: i, diff: Math.abs(m.elo - targetElo) }))
-                                 .filter(c => c.idx !== idx1 && c.diff < 200)
-                                 .sort((a, b) => a.diff - b.diff);
+        const targetElo = currentMovies[idx1].elo;
+        // Optimization: Sample a subset instead of sorting entire array for performance
+        const candidates: {idx: number, diff: number}[] = [];
+        const attempts = Math.min(currentMovies.length - 1, 20); // Try 20 random candidates
+        
+        for (let i = 0; i < attempts; i++) {
+           const r = Math.floor(Math.random() * currentMovies.length);
+           if (r !== idx1) {
+              candidates.push({ idx: r, diff: Math.abs(currentMovies[r].elo - targetElo) });
+           }
+        }
+        
+        candidates.sort((a, b) => a.diff - b.diff);
         if (candidates.length > 0) {
-            const poolSize = Math.min(candidates.length, 6);
-            idx2 = candidates[Math.floor(Math.random() * poolSize)].idx;
+            // Pick from the top 3 closest matches to keep it slightly varied
+            const pool = candidates.slice(0, 3);
+            idx2 = pool[Math.floor(Math.random() * pool.length)].idx;
         }
     }
 
-    while (idx1 === idx2) {
-      idx2 = Math.floor(Math.random() * movies.length);
+    // Fallback: Ensure not same
+    let safety = 0;
+    while (idx1 === idx2 && safety < 100) {
+      idx2 = Math.floor(Math.random() * currentMovies.length);
+      safety++;
     }
-    setCurrentPair([idx1, idx2]);
-    setAiAnalysis(null);
-  }, [movies]);
+
+    return [idx1, idx2];
+  }, []);
+
+  // --- Queue Management ---
+
+  // Effect: Maintain Queue Depth
+  useEffect(() => {
+    if (movies.length < 2) return;
+
+    setMatchupQueue(prevQueue => {
+      if (prevQueue.length >= QUEUE_SIZE) return prevQueue;
+
+      const newQueue = [...prevQueue];
+      // Generate enough pairs to fill the buffer
+      while (newQueue.length < QUEUE_SIZE) {
+        newQueue.push(generatePair(movies));
+      }
+      return newQueue;
+    });
+  }, [movies, generatePair]); // Re-runs when movies update (stats change), keeping pairings fresh based on new Elo
+
+  // Effect: Initialize First Pair if empty
+  useEffect(() => {
+    if (!currentPair && matchupQueue.length > 0) {
+      const next = matchupQueue[0];
+      setCurrentPair(next);
+      setMatchupQueue(q => q.slice(1));
+    } else if (!currentPair && movies.length >= 2) {
+      // Immediate fallback if queue isn't ready
+      setCurrentPair(generatePair(movies));
+    }
+  }, [matchupQueue, currentPair, movies, generatePair]);
+
+  // --- Background Image Pre-loading ---
 
   useEffect(() => {
-    if (!currentPair) pickNewPair();
-  }, [pickNewPair, currentPair]);
+    // Collect all unique movie indices from the queue + current pair
+    const indicesToLoad = new Set<number>();
+    if (currentPair) {
+      indicesToLoad.add(currentPair[0]);
+      indicesToLoad.add(currentPair[1]);
+    }
+    matchupQueue.forEach(pair => {
+      indicesToLoad.add(pair[0]);
+      indicesToLoad.add(pair[1]);
+    });
 
-  // Lazy Load Posters for Current Pair
-  useEffect(() => {
-    if (!currentPair) return;
+    indicesToLoad.forEach(idx => {
+      const movie = movies[idx];
+      if (!movie) return;
 
-    const loadPosters = async () => {
-      const idx1 = currentPair[0];
-      const idx2 = currentPair[1];
-      const m1 = movies[idx1];
-      const m2 = movies[idx2];
-      let updated = false;
-      const newMovies = [...movies];
+      // Check if we need to load: No poster path AND not currently fetching
+      if (!movie.posterPath && !fetchingIds.current.has(movie.id)) {
+        fetchingIds.current.add(movie.id);
 
-      if (!m1.posterPath) {
-        const path = await fetchMoviePoster(m1.name, m1.year);
-        if (path) {
-          newMovies[idx1] = { ...m1, posterPath: path };
-          updated = true;
-        }
+        // Fetch in background
+        fetchMoviePoster(movie.name, movie.year).then((path) => {
+          if (path) {
+            // Functional state update to ensure we don't clobber other updates
+            onUpdateMovies((prevMovies) => {
+              const newMovies = [...prevMovies];
+              // Find index by ID in case array order changed (unlikely but safe)
+              const targetIndex = newMovies.findIndex(m => m.id === movie.id);
+              if (targetIndex !== -1) {
+                newMovies[targetIndex] = { ...newMovies[targetIndex], posterPath: path };
+              }
+              return newMovies;
+            });
+          }
+        }).finally(() => {
+          // Whether success or fail (null), we remove from fetching so we might retry later or ignore
+          // Currently we won't retry immediately to avoid loops, as !posterPath condition would trigger again.
+          // In a real app we might mark as 'failed' to stop retries. 
+          // For now, the fetchingIds set prevents loop in this session.
+        });
       }
+    });
+  }, [matchupQueue, currentPair, movies, onUpdateMovies]);
 
-      if (!m2.posterPath) {
-        const path = await fetchMoviePoster(m2.name, m2.year);
-        if (path) {
-          newMovies[idx2] = { ...m2, posterPath: path };
-          updated = true;
-        }
-      }
 
-      if (updated) {
-        // We do NOT add to history for purely cosmetic updates like posters
-        // to avoid undoing just a poster load.
-        onUpdateMovies(newMovies);
-      }
-    };
+  // --- Event Handlers ---
 
-    loadPosters();
-  }, [currentPair, movies, onUpdateMovies]);
+  const advanceQueue = useCallback(() => {
+    if (matchupQueue.length > 0) {
+      const next = matchupQueue[0];
+      setCurrentPair(next);
+      setMatchupQueue(prev => prev.slice(1));
+      setAiAnalysis(null);
+    } else {
+      // Emergency generation if queue empty
+      setCurrentPair(generatePair(movies));
+      setAiAnalysis(null);
+    }
+  }, [matchupQueue, movies, generatePair]);
 
   const handleVote = useCallback((winnerIndex: number, loserIndex: number) => {
-    // Save current state to history before modifying
-    setHistory(prev => [...prev.slice(-10), [...movies]]); // Keep last 10 states
+    // Save history
+    setHistory(prev => [...prev.slice(-10), [...movies]]);
 
     const winner = movies[winnerIndex];
     const loser = movies[loserIndex];
     const { winner: newWinner, loser: newLoser } = updateMovieStats(winner, loser);
     
-    const newMovies = [...movies];
-    newMovies[winnerIndex] = newWinner;
-    newMovies[loserIndex] = newLoser;
+    // Update movies with new stats
+    onUpdateMovies(prevMovies => {
+      const newMovies = [...prevMovies];
+      newMovies[winnerIndex] = newWinner;
+      newMovies[loserIndex] = newLoser;
+      return newMovies;
+    });
     
-    onUpdateMovies(newMovies);
-    pickNewPair();
-  }, [movies, onUpdateMovies, pickNewPair]);
+    advanceQueue();
+  }, [movies, onUpdateMovies, advanceQueue]);
 
   const handleUndo = () => {
     if (history.length === 0) return;
     const previousState = history[history.length - 1];
     setHistory(prev => prev.slice(0, -1));
     onUpdateMovies(previousState);
-    pickNewPair(); 
+    // Note: We don't strictly restore the exact previous pair, we just generate a new one or grab from queue
+    // This feels more "forward moving" while undoing the stat change.
+    advanceQueue(); 
   };
 
   const fetchAiInsight = async () => {
@@ -138,7 +216,7 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
         case 'ArrowDown':
         case ' ':
           e.preventDefault();
-          pickNewPair();
+          advanceQueue();
           break;
         case 'Backspace':
           if (history.length > 0) handleUndo();
@@ -148,7 +226,7 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentPair, handleVote, pickNewPair, history]);
+  }, [currentPair, handleVote, advanceQueue, history]);
 
   if (!currentPair) return (
     <div className="flex items-center justify-center h-[50vh]">
@@ -178,7 +256,7 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
                     <Undo2 size={20} />
                 </Button>
             )}
-           <Button onClick={pickNewPair} variant="outline" title="Skip Pair (Space)">
+           <Button onClick={advanceQueue} variant="outline" title="Skip Pair (Space)">
              <Shuffle size={20} />
            </Button>
            <Button onClick={onFinish} variant="primary" className="flex items-center gap-2">
