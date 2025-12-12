@@ -16,20 +16,31 @@ Built with a bold **Bauhaus Design System**, it rejects generic web aesthetics i
     -   **Star Power**: Initialize Elo based on your existing 0.5-5.0 star ratings (giving favorites a head start).
 -   **Smart Merging**: Deduplicates entries and prioritizes rated content.
 
-### 2. ⚔️ The Voting Arena
+### 2. ⚔️ The Voting Arena (Now Faster!)
 Compare films in a 1v1 "Face Off" using a Tinder-style decision engine.
+-   **Animated Rank Slides**: Watch scores update in real-time with smooth, high-speed animations. Winners glow green, losers slide away.
 -   **Elo Algorithm**: Uses K-Factor 32 for dynamic rating adjustments.
 -   **Generative Art**: If posters fail to load, the app generates unique geometric Bauhaus compositions deterministically based on the movie ID.
 -   **TMDB Integration**: Automatically fetches high-res movie posters via The Movie Database API.
 -   **Undo Capability**: Made a mistake? Press `Backspace` or the Undo button to revert the last duel.
 
-### 3. 🧠 AI Vibe Check
+### 3. ♟️ Advanced Analytics & Meta Insights
+Go beyond simple rankings with chess-style performance metrics.
+-   **Deep Stats**: Click any movie to see Peak Elo, Lowest Elo, and Rating Trajectory graphs.
+-   **Clutch Factor**: Measures how often a movie wins in close matchups (within 50 Elo).
+-   **Volatility Score**: Identifies "controversial" films with wild rating swings.
+-   **Meta Leaderboards**:
+    -   **The Giant Slayer**: Single biggest upset victory.
+    -   **The Unstoppable**: Longest winning streaks.
+    -   **The Divider**: Most polarizing films.
+
+### 4. 🧠 AI Vibe Check
 Powered by **Google Gemini 2.5 Flash**:
 -   Stuck on a tough choice? Click "Ask AI".
 -   Get a generated "Vibe Check" comparing the two films.
 -   Receives detailed analysis on strengths and a final recommendation.
 
-### 4. 🏆 Live Leaderboard
+### 5. 🏆 Live Leaderboard
 -   **Real-time Ranking**: Watch movies climb or fall as you vote.
 -   **Sorting & Filtering**: Sort by Elo, Name, Year, or Match Count. Search instantly.
 -   **Export**: Download your re-ranked list as a CSV.
@@ -94,10 +105,15 @@ _High-contrast voting cards with generated art and fetched posters._
 
 ![Voting Arena](https://github.com/user-attachments/assets/9d9a7d4e-8968-47a3-8311-f2ab79c2048a)
 
-### Leaderboard
-_Sortable, filterable rankings with "hard" Bauhaus styling._
+### Advanced Stats Modal
+_Deep dive into a film's performance history._
 
-![Leaderboard](https://github.com/user-attachments/assets/ea975717-19f3-4c3c-b46b-dfac3dc1d9b3)
+![Advanced Stats](https://github.com/user-attachments/assets/stats-modal-placeholder)
+
+### Meta Insights Leaderboard
+_Discover global trends and outliers._
+
+![Meta Leaderboard](https://github.com/user-attachments/assets/meta-leaderboard-placeholder)
 
 
 ## 🛠️ Tech Stack
@@ -107,4 +123,3 @@ _Sortable, filterable rankings with "hard" Bauhaus styling._
 -   **Icons**: Lucide React
 -   **AI**: Google GenAI SDK (`@google/genai`)
 -   **Data**: LocalStorage persistence
-

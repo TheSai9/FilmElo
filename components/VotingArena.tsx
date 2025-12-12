@@ -32,6 +32,7 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
   
   // Animation State
   const [voteResult, setVoteResult] = useState<VoteResult | null>(null);
+  const [isExiting, setIsExiting] = useState(false);
   
   // Undo History: Stores snapshots of the movie list before changes
   const [history, setHistory] = useState<Movie[][]>([]);
@@ -162,18 +163,26 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
       const next = matchupQueue[0];
       setCurrentPair(next);
       setMatchupQueue(prev => prev.slice(1));
-      setAiAnalysis(null);
-      setVoteResult(null); // Clear animation state
     } else {
       // Emergency generation if queue empty
       setCurrentPair(generatePair(movies));
-      setAiAnalysis(null);
-      setVoteResult(null);
     }
+    // Clean up local state
+    setAiAnalysis(null);
+    setVoteResult(null);
   }, [matchupQueue, movies, generatePair]);
 
+  const handleSkip = useCallback(() => {
+    if (isExiting || voteResult) return;
+    setIsExiting(true);
+    setTimeout(() => {
+        advanceQueue();
+        setIsExiting(false);
+    }, 200); // Fast 200ms transition
+  }, [advanceQueue, isExiting, voteResult]);
+
   const handleVote = useCallback((winnerIndex: number, loserIndex: number) => {
-    if (voteResult) return; // Prevent double clicks during animation
+    if (voteResult || isExiting) return; // Prevent double clicks during animation
 
     // Save history
     setHistory(prev => [...prev.slice(-10), [...movies]]);
@@ -193,26 +202,38 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
       loserDiff
     });
 
-    // 2. Delayed State Update (wait for animation)
+    // 2. Wait for viewer to see stats, then exit
     setTimeout(() => {
-        onUpdateMovies(prevMovies => {
-          const newMovies = [...prevMovies];
-          newMovies[winnerIndex] = newWinner;
-          newMovies[loserIndex] = newLoser;
-          return newMovies;
-        });
+        setIsExiting(true);
         
-        advanceQueue();
-    }, 800); // 800ms animation duration
+        // 3. Swap Data after exit animation matches CSS (200ms)
+        setTimeout(() => {
+            onUpdateMovies(prevMovies => {
+              const newMovies = [...prevMovies];
+              newMovies[winnerIndex] = newWinner;
+              newMovies[loserIndex] = newLoser;
+              return newMovies;
+            });
+            
+            advanceQueue(); // This clears voteResult too
+            setIsExiting(false);
+        }, 200); // Fast 200ms transition
+    }, 600); // 600ms viewing time (snappy but readable)
 
-  }, [movies, onUpdateMovies, advanceQueue, voteResult]);
+  }, [movies, onUpdateMovies, advanceQueue, voteResult, isExiting]);
 
   const handleUndo = () => {
-    if (history.length === 0) return;
-    const previousState = history[history.length - 1];
-    setHistory(prev => prev.slice(0, -1));
-    onUpdateMovies(previousState);
-    advanceQueue(); 
+    if (history.length === 0 || isExiting) return;
+    
+    // Simple fade out for undo as well
+    setIsExiting(true);
+    setTimeout(() => {
+        const previousState = history[history.length - 1];
+        setHistory(prev => prev.slice(0, -1));
+        onUpdateMovies(previousState);
+        advanceQueue(); 
+        setIsExiting(false);
+    }, 200);
   };
 
   const fetchAiInsight = async () => {
@@ -228,7 +249,7 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
   // Keyboard Support
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!currentPair || voteResult) return; // Disable keys during animation
+      if (!currentPair || voteResult || isExiting) return; // Disable keys during animation
       
       switch(e.key) {
         case 'ArrowLeft':
@@ -240,7 +261,7 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
         case 'ArrowDown':
         case ' ':
           e.preventDefault();
-          advanceQueue();
+          handleSkip();
           break;
         case 'Backspace':
           if (history.length > 0) handleUndo();
@@ -250,7 +271,7 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentPair, handleVote, advanceQueue, history, voteResult]);
+  }, [currentPair, handleVote, handleSkip, history, voteResult, isExiting]);
 
   if (!currentPair) return (
     <div className="flex items-center justify-center h-[50vh]">
@@ -276,11 +297,11 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
         </div>
         <div className="flex flex-wrap gap-4 items-center justify-center">
             {history.length > 0 && (
-                <Button onClick={handleUndo} variant="outline" title="Undo Last Vote (Backspace)" disabled={!!voteResult}>
+                <Button onClick={handleUndo} variant="outline" title="Undo Last Vote (Backspace)" disabled={!!voteResult || isExiting}>
                     <Undo2 size={20} />
                 </Button>
             )}
-           <Button onClick={advanceQueue} variant="outline" title="Skip Pair (Space)" disabled={!!voteResult}>
+           <Button onClick={handleSkip} variant="outline" title="Skip Pair (Space)" disabled={!!voteResult || isExiting}>
              <Shuffle size={20} />
            </Button>
            <Button onClick={onFinish} variant="primary" className="flex items-center gap-2">
@@ -292,26 +313,30 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
       {/* Arena Grid */}
       <div className="flex-1 relative">
         {/* VS Badge - Geometric Centerpiece */}
-        <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none hidden md:flex transition-opacity duration-300 ${voteResult ? 'opacity-0' : 'opacity-100'}`}>
+        <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none hidden md:flex transition-all duration-200 ${voteResult || isExiting ? 'opacity-0 scale-50' : 'opacity-100 scale-100'}`}>
           <div className="bg-bauhaus-yellow text-bauhaus-black font-black text-2xl w-20 h-20 flex items-center justify-center border-4 border-bauhaus-black shadow-hard-md rotate-3">
             VS
           </div>
         </div>
 
         {/* Keyboard Hints */}
-        <div className="absolute top-0 left-0 w-full flex justify-between pointer-events-none px-4 -mt-8 opacity-40 text-xs font-black uppercase tracking-widest hidden md:flex">
+        <div className={`absolute top-0 left-0 w-full flex justify-between pointer-events-none px-4 -mt-8 opacity-40 text-xs font-black uppercase tracking-widest hidden md:flex transition-opacity duration-200 ${voteResult ? 'opacity-0' : 'opacity-40'}`}>
              <span>[←] Vote Left</span>
              <span>Vote Right [→]</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-stretch">
-            <div className="relative">
+            {/* Left Card Container */}
+            <div 
+                key={`left-${m1.id}`} 
+                className={`relative transition-all duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] ${isExiting ? 'opacity-0 -translate-x-8 translate-y-4 scale-95' : 'opacity-100 translate-x-0 translate-y-0 scale-100 animate-slide-up'}`}
+            >
                 {voteResult?.winnerId === m1.id && (
                      <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none bg-green-500/10 backdrop-blur-[2px] border-4 border-green-500 animate-slide-up">
                          <div className="text-center">
-                            <span className="text-6xl font-black text-green-600 drop-shadow-md">WIN</span>
-                            <div className="flex items-center justify-center text-green-700 font-bold text-3xl mt-2 bg-white px-4 py-1 border-2 border-green-700 shadow-hard-sm">
-                                <TrendingUp size={24} className="mr-2"/> +{Math.round(voteResult.winnerDiff)}
+                            <span className="text-6xl font-black text-green-600 drop-shadow-md block mb-4">WIN</span>
+                            <div className="inline-flex items-center justify-center text-green-700 font-bold text-3xl bg-white px-6 py-3 border-4 border-green-700 shadow-hard-md">
+                                <TrendingUp size={28} className="mr-3"/> +{Math.round(voteResult.winnerDiff)}
                             </div>
                          </div>
                      </div>
@@ -319,8 +344,8 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
                 {voteResult?.loserId === m1.id && (
                      <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none bg-red-500/10 backdrop-blur-[2px] border-4 border-red-500 animate-slide-up">
                         <div className="text-center">
-                            <div className="flex items-center justify-center text-red-700 font-bold text-3xl mt-2 bg-white px-4 py-1 border-2 border-red-700 shadow-hard-sm">
-                                <TrendingDown size={24} className="mr-2"/> {Math.round(voteResult.loserDiff)}
+                            <div className="inline-flex items-center justify-center text-red-700 font-bold text-3xl bg-white px-6 py-3 border-4 border-red-700 shadow-hard-md">
+                                <TrendingDown size={28} className="mr-3"/> {Math.round(voteResult.loserDiff)}
                             </div>
                         </div>
                      </div>
@@ -333,17 +358,22 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
             </div>
             
             {/* Mobile VS Badge */}
-            <div className="md:hidden flex justify-center -my-4 z-10">
+            <div className={`md:hidden flex justify-center -my-4 z-10 transition-opacity duration-200 ${voteResult ? 'opacity-0' : 'opacity-100'}`}>
                <div className="bg-bauhaus-yellow text-bauhaus-black font-black text-xl w-14 h-14 flex items-center justify-center border-4 border-bauhaus-black shadow-hard-sm">VS</div>
             </div>
 
-            <div className="relative">
+            {/* Right Card Container */}
+            <div 
+                key={`right-${m2.id}`}
+                className={`relative transition-all duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] ${isExiting ? 'opacity-0 translate-x-8 translate-y-4 scale-95' : 'opacity-100 translate-x-0 translate-y-0 scale-100 animate-slide-up'}`}
+                style={{ animationDelay: isExiting ? '0ms' : '100ms' }} // Stagger entry slightly
+            >
                 {voteResult?.winnerId === m2.id && (
                      <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none bg-green-500/10 backdrop-blur-[2px] border-4 border-green-500 animate-slide-up">
                          <div className="text-center">
-                            <span className="text-6xl font-black text-green-600 drop-shadow-md">WIN</span>
-                            <div className="flex items-center justify-center text-green-700 font-bold text-3xl mt-2 bg-white px-4 py-1 border-2 border-green-700 shadow-hard-sm">
-                                <TrendingUp size={24} className="mr-2"/> +{Math.round(voteResult.winnerDiff)}
+                            <span className="text-6xl font-black text-green-600 drop-shadow-md block mb-4">WIN</span>
+                            <div className="inline-flex items-center justify-center text-green-700 font-bold text-3xl bg-white px-6 py-3 border-4 border-green-700 shadow-hard-md">
+                                <TrendingUp size={28} className="mr-3"/> +{Math.round(voteResult.winnerDiff)}
                             </div>
                          </div>
                      </div>
@@ -351,8 +381,8 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
                 {voteResult?.loserId === m2.id && (
                      <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none bg-red-500/10 backdrop-blur-[2px] border-4 border-red-500 animate-slide-up">
                          <div className="text-center">
-                            <div className="flex items-center justify-center text-red-700 font-bold text-3xl mt-2 bg-white px-4 py-1 border-2 border-red-700 shadow-hard-sm">
-                                <TrendingDown size={24} className="mr-2"/> {Math.round(voteResult.loserDiff)}
+                            <div className="inline-flex items-center justify-center text-red-700 font-bold text-3xl bg-white px-6 py-3 border-4 border-red-700 shadow-hard-md">
+                                <TrendingDown size={28} className="mr-3"/> {Math.round(voteResult.loserDiff)}
                             </div>
                          </div>
                      </div>
@@ -367,7 +397,7 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
       </div>
 
       {/* AI Controls & Insight */}
-      <div className="mt-12 flex flex-col items-center justify-center min-h-[120px]">
+      <div className={`mt-12 flex flex-col items-center justify-center min-h-[120px] transition-all duration-200 ${isExiting ? 'opacity-0 translate-y-4' : 'opacity-100'}`}>
         {aiAnalysis ? (
            <div className="max-w-3xl w-full text-center bg-white border-4 border-bauhaus-black p-8 shadow-hard-lg animate-slide-up relative overflow-hidden">
              {/* Decorative Corner Triangle */}
