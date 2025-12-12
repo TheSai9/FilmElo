@@ -256,6 +256,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       if (showWatchedPrompt && pendingData) {
          // If prompt is open, dropping a file counts as the "watched.csv" upload
+         // We pass existing pendingData to merge into
          processFiles(e.dataTransfer.files, pendingData);
          setShowWatchedPrompt(false);
          setPendingData(null);
@@ -280,21 +281,33 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
       
       {/* Watched CSV Prompt Modal */}
       {showWatchedPrompt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bauhaus-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white max-w-md w-full border-4 border-bauhaus-black shadow-hard-xl p-8 text-center relative">
+        <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bauhaus-black/80 backdrop-blur-sm animate-fade-in"
+            onDrop={onDrop}
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+        >
+          <div className={`
+              bg-white max-w-md w-full border-4 shadow-hard-xl p-8 text-center relative transition-all duration-200
+              ${isDragging ? 'border-bauhaus-blue scale-105' : 'border-bauhaus-black'}
+          `}>
             <button 
                 onClick={skipWatchedUpload}
                 className="absolute top-2 right-2 p-1 hover:bg-gray-100"
             >
                 <X size={20} />
             </button>
-            <div className="mx-auto w-16 h-16 bg-bauhaus-blue text-white flex items-center justify-center border-4 border-bauhaus-black mb-4 shadow-hard-sm">
-                <Film size={32} />
+            <div className={`mx-auto w-16 h-16 text-white flex items-center justify-center border-4 border-bauhaus-black mb-4 shadow-hard-sm transition-colors ${isDragging ? 'bg-bauhaus-blue' : 'bg-bauhaus-blue'}`}>
+                <Film size={32} className={isDragging ? 'animate-bounce' : ''} />
             </div>
             <h3 className="text-2xl font-black uppercase text-bauhaus-black mb-2">Complete the Picture?</h3>
             <p className="text-gray-600 font-medium mb-8 text-sm">
                 You've loaded your <strong>Rated</strong> movies. <br/>
                 Do you also want to upload <code>watched.csv</code> to include unrated diary entries?
+                <br/><br/>
+                <span className={`text-xs font-bold uppercase tracking-widest ${isDragging ? 'text-bauhaus-blue animate-pulse' : 'text-gray-400'}`}>
+                    {isDragging ? 'Drop to Upload' : 'Drag & Drop Supported'}
+                </span>
             </p>
             
             <div className="flex flex-col gap-3">
