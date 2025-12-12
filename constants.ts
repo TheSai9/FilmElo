@@ -1,6 +1,6 @@
 
 export const INITIAL_ELO = 1200;
-export const K_FACTOR = 32;
+// K_FACTOR is now dynamic in eloCalculator.ts
 
 // Storage
 export const STORAGE_KEY = 'cinerank_data_v1';
