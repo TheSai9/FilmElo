@@ -27,6 +27,7 @@ export enum AppView {
   UPLOAD = 'UPLOAD',
   VOTE = 'VOTE',
   LEADERBOARD = 'LEADERBOARD',
+  SIMULATION = 'SIMULATION',
 }
 
 export interface ComparisonResult {

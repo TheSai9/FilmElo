@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Movie, AIAnalysis } from '../types';
 import { updateMovieStats } from '../services/eloCalculator';
@@ -5,13 +6,14 @@ import { getMovieComparisonVibe } from '../services/geminiService';
 import { fetchMoviePoster } from '../services/tmdbService';
 import MovieCard from './MovieCard';
 import Button from './Button';
-import { Sparkles, Shuffle, BarChart2, Undo2, Keyboard } from 'lucide-react';
+import { Sparkles, Shuffle, BarChart2, Undo2, Keyboard, FastForward } from 'lucide-react';
 
 interface VotingArenaProps {
   movies: Movie[];
   // Updated type to allow functional state updates for background processing
   onUpdateMovies: React.Dispatch<React.SetStateAction<Movie[]>>;
   onFinish: () => void;
+  onSimulate: () => void;
 }
 
 const QUEUE_SIZE = 5;
@@ -24,7 +26,7 @@ type VoteResult = {
   loserDiff: number;
 };
 
-const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFinish }) => {
+const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFinish, onSimulate }) => {
   const [currentPair, setCurrentPair] = useState<[number, number] | null>(null);
   const [matchupQueue, setMatchupQueue] = useState<[number, number][]>([]);
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
@@ -309,12 +311,19 @@ const VotingArena: React.FC<VotingArenaProps> = ({ movies, onUpdateMovies, onFin
                     <Undo2 size={20} />
                 </Button>
             )}
-           <Button onClick={handleSkip} variant="outline" title="Skip Pair (Space)" disabled={!!voteResult || isExiting}>
-             <Shuffle size={20} />
-           </Button>
-           <Button onClick={onFinish} variant="primary" className="flex items-center gap-2">
-             <BarChart2 size={18} /> Rankings
-           </Button>
+           
+           <div className="flex items-center border-l-2 border-gray-300 pl-4 gap-2">
+               <Button onClick={handleSkip} variant="outline" title="Skip Pair (Space)" disabled={!!voteResult || isExiting}>
+                 <Shuffle size={20} />
+               </Button>
+               <Button onClick={onSimulate} variant="yellow" className="flex items-center gap-2 group">
+                   <FastForward size={18} className="group-hover:translate-x-1 transition-transform" /> 
+                   <span className="hidden sm:inline">Simulate</span>
+               </Button>
+               <Button onClick={onFinish} variant="primary" className="flex items-center gap-2">
+                 <BarChart2 size={18} /> Rankings
+               </Button>
+           </div>
         </div>
       </div>
 

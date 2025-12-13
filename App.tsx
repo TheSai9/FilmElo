@@ -4,6 +4,7 @@ import { Movie, AppView, User, SyncStatus } from './types';
 import FileUpload from './components/FileUpload';
 import VotingArena from './components/VotingArena';
 import Leaderboard from './components/Leaderboard';
+import SimulationView from './components/SimulationView';
 import { Film, Trash2, Cloud, Check, RefreshCw, AlertCircle } from 'lucide-react';
 import { STORAGE_KEY } from './constants';
 import Button from './components/Button';
@@ -203,6 +204,14 @@ const App: React.FC = () => {
             movies={movies} 
             onUpdateMovies={setMovies} 
             onFinish={() => setView(AppView.LEADERBOARD)}
+            onSimulate={() => setView(AppView.SIMULATION)}
+          />
+        );
+      case AppView.SIMULATION:
+        return (
+          <SimulationView
+             movies={movies}
+             onBack={() => setView(AppView.VOTE)}
           />
         );
       case AppView.LEADERBOARD:

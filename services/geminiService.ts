@@ -1,6 +1,7 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { GEMINI_FLASH_MODEL } from '../constants';
-import { AIAnalysis } from '../types';
+import { AIAnalysis, Movie } from '../types';
 
 let genAI: GoogleGenAI | null = null;
 
@@ -63,4 +64,49 @@ export const getMovieComparisonVibe = async (
     console.error("Gemini API Error:", error);
     return null;
   }
+};
+
+export const getProjectedTasteProfile = async (topMovies: Movie[]): Promise<{
+    profileName: string;
+    description: string;
+    keyThemes: string[];
+} | null> => {
+    const ai = getClient();
+    if (!ai) return null;
+
+    try {
+        const movieList = topMovies.slice(0, 15).map(m => `${m.name} (${m.year})`).join(', ');
+        
+        const prompt = `
+            Based on this user's top 15 ranked movies:
+            ${movieList}
+
+            1. Give this user a creative, cool "Cinephile Persona Name" (e.g. "The Existential Dreamer", "Action Auteur").
+            2. Write a 2-sentence description of their taste.
+            3. List 3 key themes they seem to love.
+        `;
+
+        const response = await ai.models.generateContent({
+            model: GEMINI_FLASH_MODEL,
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        profileName: { type: Type.STRING },
+                        description: { type: Type.STRING },
+                        keyThemes: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    }
+                }
+            }
+        });
+
+        const text = response.text;
+        if (!text) return null;
+        return JSON.parse(text);
+    } catch (error) {
+        console.error("Gemini Taste Profile Error", error);
+        return null;
+    }
 };
