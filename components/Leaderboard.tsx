@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from 'react';
 import { Movie } from '../types';
 import { Trophy, ArrowLeft, Download, Search, ArrowUpDown, Calendar, Hash, Award, ImageIcon, Zap, Flame, Scale, List } from 'lucide-react';
@@ -158,7 +159,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ movies, onBack }) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'cinerank_elo_export.csv');
+    link.setAttribute('download', 'filmelo_export.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

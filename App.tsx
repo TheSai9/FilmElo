@@ -11,7 +11,7 @@ import Button from './components/Button';
 import AuthButton from './components/AuthButton';
 
 // Mock Cloud Storage Key (In a real app, this would be your Firebase Firestore path)
-const CLOUD_STORAGE_MOCK_KEY = 'cinerank_cloud_db_mock';
+const CLOUD_STORAGE_MOCK_KEY = 'filmelo_cloud_db_mock';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.UPLOAD);
@@ -28,7 +28,7 @@ const App: React.FC = () => {
   
   useEffect(() => {
     // Try to restore user session (Simulation)
-    const savedUser = localStorage.getItem('cinerank_user_session');
+    const savedUser = localStorage.getItem('filmelo_user_session');
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
@@ -88,7 +88,7 @@ const App: React.FC = () => {
     };
 
     setUser(mockUser);
-    localStorage.setItem('cinerank_user_session', JSON.stringify(mockUser));
+    localStorage.setItem('filmelo_user_session', JSON.stringify(mockUser));
     setAuthLoading(false);
 
     // After login, sync cloud data
@@ -98,7 +98,7 @@ const App: React.FC = () => {
   const handleLogout = () => {
     if (window.confirm("Sign out? Your data is saved to your account.")) {
       setUser(null);
-      localStorage.removeItem('cinerank_user_session');
+      localStorage.removeItem('filmelo_user_session');
       // Optionally clear local view or keep it. Let's keep it for UX continuity but clear "Cloud" status.
       setSyncStatus('idle');
     }
@@ -248,10 +248,7 @@ const App: React.FC = () => {
             
             <div className="flex flex-col leading-none">
               <span className="font-black text-xl md:text-2xl uppercase tracking-tighter text-bauhaus-black group-hover:text-bauhaus-red transition-colors">
-                CineRank
-              </span>
-              <span className="font-bold text-[10px] md:text-xs uppercase tracking-[0.3em] text-bauhaus-blue">
-                Bauhaus
+                FilmElo
               </span>
             </div>
           </div>

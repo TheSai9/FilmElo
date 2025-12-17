@@ -334,7 +334,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 border-4 border-bauhaus-black rotate-45 opacity-10"></div>
         
         <h2 className="text-5xl font-black uppercase tracking-tighter text-bauhaus-black mb-4">
-          CineRank <span className="text-bauhaus-red">Elo</span>
+          FilmElo
         </h2>
         <p className="text-lg font-medium text-gray-600 max-w-md mx-auto">
           Upload your Letterboxd history to construct your definitive film hierarchy.

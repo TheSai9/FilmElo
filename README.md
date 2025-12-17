@@ -1,10 +1,11 @@
-# CineRank Elo
 
-**CineRank Elo** is a visual movie ranking application that transforms your Letterboxd history into a definitive hierarchy using the **Elo rating system**. 
+# FilmElo
 
-Built with a bold **Bauhaus Design System**, it rejects generic web aesthetics in favor of constructivist geometry, primary colors, and functional art.
+**FilmElo** is a visual movie ranking application that transforms your Letterboxd history into a definitive hierarchy using the **Elo rating system**. 
 
-![CineRank Hero Image](https://github.com/user-attachments/assets/2ba48387-703e-4d25-8fc9-fc1e979bb2a9)
+Built with a bold geometric design system, it uses primary colors and functional art to focus on what matters: the data.
+
+![FilmElo Hero Image](https://github.com/user-attachments/assets/2ba48387-703e-4d25-8fc9-fc1e979bb2a9)
 
 
 ## ✨ Key Features
@@ -16,35 +17,33 @@ Built with a bold **Bauhaus Design System**, it rejects generic web aesthetics i
     -   **Star Power**: Initialize Elo based on your existing 0.5-5.0 star ratings (giving favorites a head start).
 -   **Smart Merging**: Deduplicates entries and prioritizes rated content.
 
-### 2. ⚔️ The Voting Arena (Now Faster!)
+### 2. ⚔️ The Voting Arena
 Compare films in a 1v1 "Face Off" using a Tinder-style decision engine.
--   **Animated Rank Slides**: Watch scores update in real-time with smooth, high-speed animations. Winners glow green, losers slide away.
--   **Elo Algorithm**: Uses K-Factor 32 for dynamic rating adjustments.
--   **Generative Art**: If posters fail to load, the app generates unique geometric Bauhaus compositions deterministically based on the movie ID.
+-   **Animated Rank Slides**: Watch scores update in real-time with smooth animations.
+-   **Elo Algorithm**: Uses dynamic K-Factor for adaptive rating adjustments.
+-   **Generative Art**: If posters fail to load, the app generates unique geometric compositions based on the movie ID.
 -   **TMDB Integration**: Automatically fetches high-res movie posters via The Movie Database API.
--   **Undo Capability**: Made a mistake? Press `Backspace` or the Undo button to revert the last duel.
+-   **Undo Capability**: Made a mistake? Press `Backspace` to revert.
 
-### 3. ♟️ Advanced Analytics & Meta Insights
-Go beyond simple rankings with chess-style performance metrics.
+### 3. 🧠 Neural Projection (Simulation)
+Don't want to vote manually forever? Let the AI finish the job.
+-   **Monte Carlo Simulation**: The engine simulates hundreds of future matchup rounds based on your current hierarchy.
+-   **Live Visualizations**: Watch the "Spaghetti Plot" of Elo trajectories evolve in real-time.
+-   **AI Taste Profile**: Once the simulation stabilizes, Google Gemini generates a psychographic profile of your taste, including a "Persona Name" and key themes.
+
+### 4. ♟️ Advanced Analytics & Meta Insights
 -   **Deep Stats**: Click any movie to see Peak Elo, Lowest Elo, and Rating Trajectory graphs.
--   **Clutch Factor**: Measures how often a movie wins in close matchups (within 50 Elo).
+-   **Clutch Factor**: Measures how often a movie wins in close matchups.
 -   **Volatility Score**: Identifies "controversial" films with wild rating swings.
 -   **Meta Leaderboards**:
     -   **The Giant Slayer**: Single biggest upset victory.
     -   **The Unstoppable**: Longest winning streaks.
     -   **The Divider**: Most polarizing films.
 
-### 4. 🧠 AI Vibe Check
-Powered by **Google Gemini 2.5 Flash**:
--   Stuck on a tough choice? Click "Ask AI".
--   Get a generated "Vibe Check" comparing the two films.
--   Receives detailed analysis on strengths and a final recommendation.
-
 ### 5. 🏆 Live Leaderboard
 -   **Real-time Ranking**: Watch movies climb or fall as you vote.
 -   **Sorting & Filtering**: Sort by Elo, Name, Year, or Match Count. Search instantly.
 -   **Export**: Download your re-ranked list as a CSV.
--   **Visuals**: Rank badges and thumbnails in a high-contrast data grid.
 
 ## ⌨️ Keyboard Shortcuts
 
@@ -63,14 +62,13 @@ Speed up your ranking process with keyboard controls:
 -   Node.js installed
 -   A Letterboxd account (to export your data)
 -   (Optional) Google Gemini API Key
--   (Optional) TMDB API Key
 
 ### Installation
 
 1.  **Clone the repository**
     ```bash
-    git clone https://github.com/yourusername/cinerank-elo.git
-    cd cinerank-elo
+    git clone https://github.com/yourusername/filmelo.git
+    cd filmelo
     ```
 
 2.  **Install dependencies**
@@ -81,12 +79,7 @@ Speed up your ranking process with keyboard controls:
 3.  **Environment Setup**
     Create a `.env` file in the root:
     ```env
-    # Optional: For AI Features
     API_KEY=your_gemini_api_key
-    
-    # Optional: For Posters (Defaults provided for demo)
-    TMDB_API_KEY=your_tmdb_key
-    TMDB_READ_TOKEN=your_tmdb_read_token
     ```
 
 4.  **Run the App**
@@ -119,11 +112,10 @@ _Discover trends and outliers._
 
 <img width="1009" height="721" alt="image" src="https://github.com/user-attachments/assets/ead27797-3008-40e2-8ff4-3eadcb76cb9a" />
 
-
 ## 🛠️ Tech Stack
 
 -   **Frontend**: React 19, TypeScript
--   **Styling**: Tailwind CSS (Custom Config)
+-   **Styling**: Tailwind CSS
 -   **Icons**: Lucide React
 -   **AI**: Google GenAI SDK (`@google/genai`)
 -   **Data**: LocalStorage persistence
