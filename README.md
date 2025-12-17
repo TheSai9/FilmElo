@@ -3,9 +3,10 @@
 
 **FilmElo** is a visual movie ranking application that transforms your Letterboxd history into a definitive hierarchy using the **Elo rating system**. 
 
-Built with a bold geometric design system, it uses primary colors and functional art to focus on what matters: the data.
+_Built with a bold geometric design system, it uses primary colors and functional art to focus on what matters: the data._
 
-![FilmElo Hero Image](https://github.com/user-attachments/assets/2ba48387-703e-4d25-8fc9-fc1e979bb2a9)
+<img width="905" height="366" alt="image" src="https://github.com/user-attachments/assets/078170da-5e80-46b4-ba49-004f1751e268" />
+
 
 
 ## ✨ Key Features
@@ -21,7 +22,7 @@ Built with a bold geometric design system, it uses primary colors and functional
 Compare films in a 1v1 "Face Off" using a Tinder-style decision engine.
 -   **Animated Rank Slides**: Watch scores update in real-time with smooth animations.
 -   **Elo Algorithm**: Uses dynamic K-Factor for adaptive rating adjustments.
--   **Generative Art**: If posters fail to load, the app generates unique geometric compositions based on the movie ID.
+-   **Custom Art**: If posters fail to load, the app generates unique geometric compositions based on the movie ID.
 -   **TMDB Integration**: Automatically fetches high-res movie posters via The Movie Database API.
 -   **Undo Capability**: Made a mistake? Press `Backspace` to revert.
 
@@ -111,6 +112,11 @@ _Discover trends and outliers._
 <br><br>
 
 <img width="1009" height="721" alt="image" src="https://github.com/user-attachments/assets/ead27797-3008-40e2-8ff4-3eadcb76cb9a" />
+
+### AI Neural Projection
+_Simulates hundreds of matchups based on your past votes and rankings._
+<img width="1378" height="655" alt="image" src="https://github.com/user-attachments/assets/0f2ffc9d-48e1-4fea-b53a-a6dc6cea68c1" />
+
 
 ## 🛠️ Tech Stack
 
